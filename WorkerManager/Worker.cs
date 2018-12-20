@@ -16,21 +16,19 @@ namespace WorkerManager
 
         private readonly string controllerHost;
         private readonly string exeFile;
-        private readonly string iniFile;
         private readonly string workDir;
 
-        private int restartCount = 0;
+        private int restartCount;
 
         public event EventHandler Restarted;
 
-        public Worker(string ip, int port, string controllerHost, string exeFile, string iniFile, string workDir)
+        public Worker(string ip, int port, string controllerHost, string exeFile, string workDir)
         {
             this.Ip = ip;
             this.Port = port;
 
             this.controllerHost = controllerHost;
             this.exeFile = exeFile;
-            this.iniFile = iniFile;
             this.workDir = workDir;
         }
 
@@ -123,7 +121,7 @@ namespace WorkerManager
             //start worker process with parameters
             //learn more about command line parameters here: 
             //https://knowledge.autodesk.com/support/3ds-max/learn-explore/caas/CloudHelp/cloudhelp/2019/ENU/3DSMax-Basics/files/GUID-1A97CFEC-60A3-4221-B9C3-5C808E2AED35-htm.html
-            var startInfo = new ProcessStartInfo(this.exeFile, $"-ma -dfc -silent -vxs -i {this.iniFile} -U MAXScript {startupScriptFilename}")
+            var startInfo = new ProcessStartInfo(this.exeFile, $"-ma -dfc -silent -vxs -U MAXScript {startupScriptFilename}")
             {
                 WorkingDirectory = this.workDir,
                 WindowStyle = ProcessWindowStyle.Minimized

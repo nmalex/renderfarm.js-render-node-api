@@ -14,7 +14,6 @@ namespace WorkerManager
 
         private readonly string workDir;
         private readonly string exeFile;
-        private readonly string iniFile;
 
         static readonly Random Rnd = new Random();
         private static readonly Configuration Config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
@@ -52,7 +51,6 @@ namespace WorkerManager
         {
             this.workDir = Config.AppSettings.Settings["work_dir"].Value;
             this.exeFile = Config.AppSettings.Settings["exe_file"].Value;
-            this.iniFile = Config.AppSettings.Settings["ini_file"].Value;
             this.controllerHost = Config.AppSettings.Settings["controller_host"].Value;
 
             //this.totalCpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
@@ -121,7 +119,7 @@ namespace WorkerManager
                 {
                     var randomPort = (int)Math.Floor(20000 + 40000 * Rnd.NextDouble());
                     var ip = GetLocalIp();
-                    worker = new Worker(ip, randomPort, this.controllerHost, this.exeFile, this.iniFile, this.workDir);
+                    worker = new Worker(ip, randomPort, this.controllerHost, this.exeFile, this.workDir);
                 } while (this.workers.ContainsKey(worker.Port));
             }
 
