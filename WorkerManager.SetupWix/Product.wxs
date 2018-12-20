@@ -1,0 +1,154 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
+     xmlns:firewall="http://schemas.microsoft.com/wix/FirewallExtension">
+
+  <?include $(sys.CURRENTDIR)\Config.wxi?>
+  <Product Id="*" Name="$(var.ProductName)" Language="1033" Version="$(var.ProductVersion)" Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.ProductUpgradeCode)">
+    <Package InstallerVersion="200" InstallPrivileges="elevated" InstallScope="perMachine" Platform="x64" Compressed="yes" Description="Runs 3ds max instances to serve renderfarm.js requests" ReadOnly="no" ShortNames="no" />
+
+    <Upgrade Id="$(var.ProductUpgradeCode)">
+      <UpgradeVersion OnlyDetect="yes" Property="SELFFOUND" Minimum="$(var.ProductVersion)" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="yes" />
+
+      <UpgradeVersion OnlyDetect="yes" Property="NEWERFOUND" Minimum="$(var.ProductVersion)" IncludeMinimum="no" />
+      <UpgradeVersion OnlyDetect="no" Property="OLDERFOUND" Maximum="$(var.ProductVersion)" IncludeMaximum="no" />
+    </Upgrade>
+
+    <!--<MajorUpgrade AllowSameVersionUpgrades="yes" AllowDowngrades="no" DowngradeErrorMessage="A newer version of [ProductName] is already installed." />-->
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="systray.ico" SourceFile="$(var.WorkerManager.ProjectDir)systray.ico" />
+
+    <Property Id="ARPPRODUCTICON" Value="systray.ico" />
+    <Property Id="ARPHELPLINK" Value="http://renderfarmjs.com" />
+    <Property Id="ARPVERSION" Value="$(var.ProductVersion)" />
+
+    <SetProperty Id="ARPINSTALLLOCATION" Value="[ProgramFiles64Folder]$(var.Manufacturer)\$(var.ProductName)" After="CostFinalize" />
+
+    <Feature Id="ProductFeature" Title="Worker Manager" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="RegistryEntries" />
+      <ComponentRef Id="ApplicationShortcutDesktop" />
+    </Feature>
+
+    <CustomAction Id="NoDowngrade" Error="A newer version of [ProductName] is already installed." />
+    <CustomAction Id="AlreadyUpdated" Error="The latest version of [ProductName] is already installed: [ProductVersion]" />
+
+    <InstallExecuteSequence>
+      <Custom Action="NoDowngrade" After="FindRelatedProducts">NEWERFOUND</Custom>
+      <Custom Action="AlreadyUpdated" After="NoDowngrade">SELFFOUND</Custom>
+
+      <Custom Action="CustomAction_BeforeInstall" After='InstallInitialize'>(NOT Installed) AND (NOT REMOVE)</Custom>
+      <Custom Action="CustomAction_OnInstall_CustomActionData" Before="CustomAction_OnInstall" />
+      <Custom Action="CustomAction_OnInstall" After='InstallFiles'>(NOT Installed) AND (NOT REMOVE)</Custom>
+
+      <Custom Action='CustomAction_BeforeUpdate' After='InstallInitialize'>WIX_UPGRADE_DETECTED OR UPGRADINGPRODUCTCODE</Custom>
+      <Custom Action="CustomAction_OnUpdate_CustomActionData" Before="CustomAction_OnUpdate" />
+      <Custom Action='CustomAction_OnUpdate' After='StartServices'>WIX_UPGRADE_DETECTED OR UPGRADINGPRODUCTCODE</Custom>
+
+      <Custom Action='CustomAction_BeforeUninstall' Before='StopServices'>(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+      <Custom Action="CustomAction_OnUninstall_CustomActionData" Before="CustomAction_OnUninstall" />
+      <Custom Action='CustomAction_OnUninstall' After='RemoveFiles'>(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+
+      <RemoveExistingProducts Before="InstallInitialize" >OLDERFOUND</RemoveExistingProducts>
+    </InstallExecuteSequence>
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <UIRef Id="WixUI_InstallDir" />
+  </Product>
+
+  <Fragment Id="RegistryKeysFragment">
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="RegistryEntries">
+        <RegistryKey Root="HKLM" Key="Software\$(var.Manufacturer)\$(var.ProductName)">
+          <RegistryValue Type="string" Name="DisplayName" Value="$(var.ProductName)" />
+          <RegistryValue Type="string" Name="DisplayVersion" Value="$(var.ProductVersion)" />
+          <RegistryValue Type="string" Name="InstallLocation" Value="[ProgramFiles64Folder]$(var.Manufacturer)\$(var.ProductName)" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]">
+          <RegistryValue Type="string" Name="DisplayName" Value="$(var.ProductName)" />
+          <RegistryValue Type="string" Name="DisplayVersion" Value="$(var.ProductVersion)" />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment Id="TargetDirFragment">
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="ManufacturerDir" Name="$(var.Manufacturer)">
+          <Directory Id="INSTALLFOLDER" Name="$(var.ProductName)">
+          </Directory>
+        </Directory>
+      </Directory>
+      <!-- install desktop icon -->
+      <Directory Id="DesktopFolder" Name="Desktop">
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <Fragment Id="FilesFragment">
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="icon.ico">
+        <File Id="icon.ico" Name="icon.ico" Source="$(var.WorkerManager.ProjectDir)systray.ico" />
+      </Component>
+      <Component Id="WorkerManager.exe.Component" Guid="3182f279-bd44-41b4-8f97-f1c3b3c910e1">
+        <File Id="WorkerManager.exe" Name="WorkerManager.exe" Source="$(var.WorkerManager.TargetDir)WorkerManager.exe" />
+        <File Id="WorkerManager.exe.config" Name="WorkerManager.exe.config" Source="$(var.WorkerManager.TargetDir)WorkerManager.exe.config" />
+
+        <File Id="Microsoft.Extensions.Logging.Abstractions.dll" Name="Microsoft.Extensions.Logging.Abstractions.dll" Source="$(var.WorkerManager.TargetDir)Microsoft.Extensions.Logging.Abstractions.dll" />
+        <File Id="Microsoft.Extensions.Logging.Abstractions.xml" Name="Microsoft.Extensions.Logging.Abstractions.xml" Source="$(var.WorkerManager.TargetDir)Microsoft.Extensions.Logging.Abstractions.xml" />
+        <File Id="Microsoft.Extensions.Primitives.dll" Name="Microsoft.Extensions.Primitives.dll" Source="$(var.WorkerManager.TargetDir)Microsoft.Extensions.Primitives.dll" />
+        <File Id="Microsoft.Extensions.Primitives.xml" Name="Microsoft.Extensions.Primitives.xml" Source="$(var.WorkerManager.TargetDir)Microsoft.Extensions.Primitives.xml" />
+        <File Id="Microsoft.Net.Http.Server.dll" Name="Microsoft.Net.Http.Server.dll" Source="$(var.WorkerManager.TargetDir)Microsoft.Net.Http.Server.dll" />
+        <File Id="Microsoft.Net.Http.Server.xml" Name="Microsoft.Net.Http.Server.xml" Source="$(var.WorkerManager.TargetDir)Microsoft.Net.Http.Server.xml" />
+        <File Id="Newtonsoft.Json.dll" Name="Newtonsoft.Json.dll" Source="$(var.WorkerManager.TargetDir)Newtonsoft.Json.dll" />
+        <File Id="Newtonsoft.Json.xml" Name="Newtonsoft.Json.xml" Source="$(var.WorkerManager.TargetDir)Newtonsoft.Json.xml" />
+        <File Id="server.ico" Name="server.ico" Source="$(var.WorkerManager.TargetDir)server.ico" />
+        <File Id="System.Runtime.CompilerServices.Unsafe.dll" Name="System.Runtime.CompilerServices.Unsafe.dll" Source="$(var.WorkerManager.TargetDir)System.Runtime.CompilerServices.Unsafe.dll" />
+        <File Id="System.Runtime.CompilerServices.Unsafe.xml" Name="System.Runtime.CompilerServices.Unsafe.xml" Source="$(var.WorkerManager.TargetDir)System.Runtime.CompilerServices.Unsafe.xml" />
+        <File Id="System.Runtime.InteropServices.RuntimeInformation.dll" Name="System.Runtime.InteropServices.RuntimeInformation.dll" Source="$(var.WorkerManager.TargetDir)System.Runtime.InteropServices.RuntimeInformation.dll" />
+
+        <!-- <ServiceInstall Id="ServiceInstaller" Type="ownProcess" Vital="yes" Name="Rayys.WorkerManager" DisplayName="Rayys Worker Manager" Description="Safety network scanner and listener" Start="auto" Account="LocalSystem" ErrorControl="ignore" Interactive="no">
+          <util:ServiceConfig FirstFailureActionType="restart" SecondFailureActionType="restart" ThirdFailureActionType="none" ResetPeriodInDays="5" RestartServiceDelayInSeconds="10"/>
+        </ServiceInstall>
+        <ServiceControl Id="StartService" Start="install" Stop="both" Remove="both" Name="Rayys.WorkerManager" Wait="yes" />
+        <ServiceControl Id="StopService" Stop="uninstall" Remove="uninstall" Name="Rayys.WorkerManager" Wait="yes" />  -->
+
+        <firewall:FirewallException Id="Allow.Rayys.WorkerManager.Service.Udp" Name="Rayys Worker Manager" Description="Allow Inbound Udp" File="WorkerManager.exe" IgnoreFailure="no" Profile="all" Protocol="udp" Scope="any" ></firewall:FirewallException>
+        <firewall:FirewallException Id="Allow.Rayys.WorkerManager.Service.Tcp" Name="Rayys Worker Manager" Description="Allow Inbound Tcp" File="WorkerManager.exe" IgnoreFailure="no" Profile="all" Protocol="tcp" Scope="any" ></firewall:FirewallException>
+      </Component>
+    </ComponentGroup>
+
+    <Component Id="ApplicationShortcutDesktop" Guid="*" Directory="DesktopFolder">
+      <Shortcut Id="ApplicationDesktopShortcut"
+          Name="Worker Manager"
+          Description="Worker Manager controls 3ds max instances that serve renderfarmjs requests"
+          Target="[INSTALLFOLDER]WorkerManager.exe"
+          WorkingDirectory="INSTALLFOLDER"/>
+      <RemoveFolder Id="DesktopFolder" On="uninstall"/>
+      <RegistryValue
+          Root="HKCU"
+          Key="Software/WorkerManager"
+          Name="installed"
+          Type="integer"
+          Value="1"
+          KeyPath="yes"/>
+    </Component>
+
+    <CustomAction Id="CustomAction_BeforeInstall" BinaryKey="CustomAction.CA" DllEntry="CustomAction_BeforeInstall" Execute='immediate' Return="check"></CustomAction>
+    <CustomAction Id="CustomAction_OnInstall_CustomActionData" Property="CustomAction_OnInstall" Value="InstallFolder=[INSTALLFOLDER];ProductVersion=[APPVERSION]" />
+    <CustomAction Id="CustomAction_OnInstall" BinaryKey="CustomAction.CA" DllEntry="CustomAction_OnInstall" Impersonate="no" Execute='deferred' Return="check"></CustomAction>
+
+    <CustomAction Id="CustomAction_BeforeUpdate" BinaryKey="CustomAction.CA" DllEntry="CustomAction_BeforeUpdate" Execute='immediate' Return="check"></CustomAction>
+    <CustomAction Id="CustomAction_OnUpdate_CustomActionData" Property="CustomAction_OnUpdate" Value="InstallFolder=[INSTALLFOLDER];ProductVersion=[APPVERSION]" />
+    <CustomAction Id="CustomAction_OnUpdate" BinaryKey="CustomAction.CA" DllEntry="CustomAction_OnUpdate" Impersonate="no" Execute='deferred' Return="check"></CustomAction>
+
+    <CustomAction Id="CustomAction_BeforeUninstall" BinaryKey="CustomAction.CA" DllEntry="CustomAction_BeforeUninstall" Execute='immediate' Return="check"></CustomAction>
+    <CustomAction Id="CustomAction_OnUninstall_CustomActionData" Property="CustomAction_OnUninstall" Value="InstallFolder=[INSTALLFOLDER];ProductVersion=[APPVERSION]" />
+    <CustomAction Id="CustomAction_OnUninstall" BinaryKey="CustomAction.CA" DllEntry="CustomAction_OnUninstall" Impersonate="no" Execute='deferred' Return="check"></CustomAction>
+    
+    <Binary Id='CustomAction.CA' SourceFile="$(var.WorkerManager.SetupWix.CustomActions.TargetDir)Setup.CustomActions.CA.dll" />
+  </Fragment>
+</Wix>

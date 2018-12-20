@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Page Title</title>
+<script
+  src="https://code.jquery.com/jquery-3.3.1.js"
+  integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+  crossorigin="anonymous"></script>
+<script>
+function handleGetClick() {
+$.ajax({
+    url: 'http://localhost:11000/worker',
+    type: 'GET',
+    dataType: "json",
+    success: function(result) {
+        // Do something with the result
+        console.log(result);
+    }
+});
+}
+
+function handlePostClick() {
+$.ajax({
+    url: 'http://localhost:11000/worker',
+    type: 'POST',
+    dataType: "json",
+    success: function(result) {
+        // Do something with the result
+        console.log(result);
+    }
+});
+}
+
+function handlePutClick() {
+var payload = { port: 18763 };
+$.ajax({
+    url: 'http://localhost:11000/worker',
+    type: 'PUT',
+    data: JSON.stringify(payload),
+    dataType: "json",
+    success: function(result) {
+        // Do something with the result
+        console.log(result);
+    }
+});
+}
+
+function handleDeleteClick() {
+$.ajax({
+    url: 'http://localhost:11000/worker/123',
+    type: 'DELETE',
+    dataType: "json",
+    success: function(result) {
+        // Do something with the result
+        console.log(result);
+    }
+});
+}
+
+</script>
+</head>
+<body>
+
+<button onclick="handleGetClick()">Get</button>
+<button onclick="handlePostClick()">Post</button>
+<button onclick="handlePutClick()">Put</button>
+<button onclick="handleDeleteClick()">Delete</button>
+
+</body>
+</html>
