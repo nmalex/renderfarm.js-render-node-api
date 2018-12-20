@@ -30,6 +30,7 @@ namespace WorkerManager
 
             this.workersManager = new WorkersManager();
             this.workersManager.Added += OnWorkerAdded;
+            this.workersManager.Updated += OnWorkerUpdated;
             this.workersManager.Deleted += OnWorkerDeleted;
             this.workersManager.Load();
 
@@ -63,13 +64,25 @@ namespace WorkerManager
                 ImageIndex = 0
             };
 
-            this.Invoke((MethodInvoker) delegate
+            this.listView1.SafeInvoke(() =>
             {
                 this.listItemsMap[workerAdded] = listViewItem;
                 this.listView1.Items.Add(listViewItem);
             });
 
             this.UpdateWorkerCount();
+        }
+
+        private void OnWorkerUpdated(object sender, IWorker workerUpdated)
+        {
+            ListViewItem listItem;
+            if (this.listItemsMap.TryGetValue(workerUpdated, out listItem))
+            {
+                this.listView1.SafeInvoke(() =>
+                {
+                    listItem.Text = workerUpdated.Label;
+                });
+            }
         }
 
         private void OnWorkerDeleted(object sender, IWorker workerDeleted)
@@ -82,7 +95,7 @@ namespace WorkerManager
 
         private void UpdateWorkerCount()
         {
-            this.Invoke((MethodInvoker) delegate
+            this.lblWorkersCount.SafeInvoke(() =>
             {
                 this.lblWorkersCount.Text = $"Worker Count: {this.workersManager.Count}";
             });

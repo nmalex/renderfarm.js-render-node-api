@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -23,6 +24,7 @@ namespace WorkerManager
 
         public event EventHandler<IWorker> Added;
         public event EventHandler<IWorker> Deleted;
+        public event EventHandler<IWorker> Updated;
 
         public int Count
         {
@@ -31,6 +33,17 @@ namespace WorkerManager
                 lock (this.sync)
                 {
                     return this.workers.Count;
+                }
+            }
+        }
+
+        public IEnumerable<IWorker> Workers
+        {
+            get
+            {
+                lock (this.sync)
+                {
+                    return this.workers.Values.ToList();
                 }
             }
         }
@@ -56,9 +69,16 @@ namespace WorkerManager
                 this.SetWorkerCountSettings(this.workers.Count);
             }
 
+            worker.Restarted += this.OnWorkerRestarted;
             worker.Start();
+
             this.Added?.Invoke(this, worker);
             return worker;
+        }
+
+        private void OnWorkerRestarted(object sender, EventArgs e)
+        {
+            this.Updated?.Invoke(this, (IWorker)sender);
         }
 
         public void DeleteWorker(IWorker worker)
@@ -74,6 +94,7 @@ namespace WorkerManager
                 this.SetWorkerCountSettings(this.workers.Count);
             }
 
+            worker.Restarted -= this.OnWorkerRestarted;
             worker.Kill();
             worker.Dispose();
 
@@ -86,14 +107,7 @@ namespace WorkerManager
 
             for (var i = 0; i < workerCount; i++)
             {
-                IWorker worker;
-                lock (this.sync)
-                {
-                    worker = this.CreateWorker();
-                    this.workers[worker.Port] = worker;
-                }
-                worker.Start();
-                this.Added?.Invoke(this, worker);
+                this.AddWorker();
             }
         }
 
@@ -194,6 +208,26 @@ namespace WorkerManager
                 }
 
                 this.DeleteWorker(worker2Delete);
+
+                return true;
+            }
+        }
+
+        public bool KillWorker(int port)
+        {
+            lock (this.sync)
+            {
+                var worker2Kill = this.workers.Values.FirstOrDefault(w => w.Port == port);
+                if (worker2Kill == null)
+                {
+                    return false;
+                }
+
+                if (worker2Kill.Pid != null)
+                {
+                    var workerProcess = Process.GetProcessById((int) worker2Kill.Pid, Environment.MachineName);
+                    workerProcess.Kill();
+                }
 
                 return true;
             }

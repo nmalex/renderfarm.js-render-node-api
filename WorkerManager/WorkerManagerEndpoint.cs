@@ -90,8 +90,12 @@ namespace WorkerManager
 
         private void HandleGetRequest(RequestContext context)
         {
+            var serializer = new JsonSerializer();
+            var sb = new StringBuilder();
+            serializer.Serialize(new StringWriter(sb), this.workersManager.Workers);
+
             WriteHeaders(context);
-            WriteResponse(context, "{\"error\": \"not implemented\"}");
+            WriteResponse(context, sb.ToString());
         }
 
         private void HandlePostRequest(RequestContext context)
@@ -148,7 +152,7 @@ namespace WorkerManager
                 return;
             }
 
-            if (!this.workersManager.DeleteWorker(port))
+            if (!this.workersManager.KillWorker(workerPort))
             {
                 WriteResponse(context, "{\"error\": \"worker not found\"}");
                 return;

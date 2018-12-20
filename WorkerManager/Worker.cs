@@ -19,6 +19,10 @@ namespace WorkerManager
         private readonly string iniFile;
         private readonly string workDir;
 
+        private int restartCount = 0;
+
+        public event EventHandler Restarted;
+
         public Worker(string ip, int port, string controllerHost, string exeFile, string iniFile, string workDir)
         {
             this.Ip = ip;
@@ -34,9 +38,11 @@ namespace WorkerManager
 
         private string Ip { get; }
 
+        public int? Pid => this.Process?.Id;
+
         public int Port { get; }
 
-        public string Label => $"{this.Ip}:{this.Port}";
+        public string Label => $"{this.Ip}:{this.Port} ({this.restartCount})";
 
         private Process Process { get; set; }
 
@@ -100,6 +106,16 @@ namespace WorkerManager
 
         public void Start()
         {
+            this.Start(false);
+        }
+
+        private void Restart()
+        {
+            this.Start(true);
+        }
+
+        private void Start(bool isRestart)
+        {
             //prepare startup.ms file for this worker
             var startupScriptFilename = Path.Combine(Path.GetTempPath(), $"worker_{this.Port}.ms");
             File.WriteAllText(startupScriptFilename, $"threejsApiStart {this.Port} \"{this.controllerHost}\"");
@@ -117,13 +133,20 @@ namespace WorkerManager
                 StartInfo = startInfo,
                 EnableRaisingEvents = true
             };
-            this.Process.Start();
 
             //update UI
             if (this.Process != null)
             {
-                this.Process.PriorityClass = ProcessPriorityClass.Idle;
                 this.Process.Exited += OnWorkerStopped;
+
+                this.Process.Start();
+                this.Process.PriorityClass = ProcessPriorityClass.Idle;
+
+                if (isRestart)
+                {
+                    this.restartCount ++;
+                    this.Restarted?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
 
@@ -173,7 +196,7 @@ namespace WorkerManager
             process.Exited -= OnWorkerStopped;
             process.Dispose();
 
-            this.Start();
+            this.Restart();
         }
 
         private static string GetInstanceNameForProcessId(int processId)
