@@ -55,6 +55,7 @@
     </InstallExecuteSequence>
 
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.SolutionDir)WorkerManager.SetupWix\WixUIDialog.bmp" />
     <UIRef Id="WixUI_InstallDir" />
   </Product>
 
