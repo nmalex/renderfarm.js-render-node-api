@@ -37,12 +37,14 @@
             this.btnAddWorker = new System.Windows.Forms.Button();
             this.btnDeleteWorker = new System.Windows.Forms.Button();
             this.lblWorkersCount = new System.Windows.Forms.Label();
+            this.button1 = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // notifyIcon1
             // 
             this.notifyIcon1.BalloonTipText = "The app will run minimized";
             this.notifyIcon1.BalloonTipTitle = "RFarm Worker Manager";
+            this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
             this.notifyIcon1.Text = "RFarm Worker Manager";
             this.notifyIcon1.Visible = true;
             this.notifyIcon1.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon1_MouseDoubleClick);
@@ -115,11 +117,22 @@
             this.lblWorkersCount.TabIndex = 8;
             this.lblWorkersCount.Text = "Worker Count: 0";
             // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(417, 522);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(100, 29);
+            this.button1.TabIndex = 9;
+            this.button1.Text = "button1";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(864, 570);
+            this.Controls.Add(this.button1);
             this.Controls.Add(this.lblWorkersCount);
             this.Controls.Add(this.btnDeleteWorker);
             this.Controls.Add(this.btnAddWorker);
@@ -146,6 +159,7 @@
         private System.Windows.Forms.Button btnAddWorker;
         private System.Windows.Forms.Button btnDeleteWorker;
         private System.Windows.Forms.Label lblWorkersCount;
+        private System.Windows.Forms.Button button1;
     }
 }
 

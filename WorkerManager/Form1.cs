@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -210,6 +212,19 @@ namespace WorkerManager
         private void btnDeleteWorker_Click(object sender, EventArgs e)
         {
             this.workersManager.DeleteWorker((IWorker)this.selectedItem.Tag);
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            var strWindowsTitles = EnumerateOpenedWindows.GetDesktopWindowsTitles();
+            var sb = new StringBuilder();
+
+            foreach (string strTitle in strWindowsTitles)
+            {
+                sb.AppendLine(strTitle);
+            }
+
+            File.WriteAllText("C:\\Temp\\AllWindows.txt", sb.ToString());
         }
     }
 }
