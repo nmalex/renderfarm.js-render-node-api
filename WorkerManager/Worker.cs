@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace WorkerManager
 {
@@ -17,12 +18,15 @@ namespace WorkerManager
         private readonly string controllerHost;
         private readonly string exeFile;
         private readonly string workDir;
+        private readonly TimeSpan unresponsiveTimeout;
 
         private int restartCount;
+        private Timer timerProcessCheck;
+        private DateTime? processUnresponsiveSince;
 
         public event EventHandler Restarted;
 
-        public Worker(string ip, int port, string controllerHost, string exeFile, string workDir)
+        public Worker(string ip, int port, string controllerHost, string exeFile, string workDir, TimeSpan unresponsiveTimeout)
         {
             this.Ip = ip;
             this.Port = port;
@@ -30,6 +34,7 @@ namespace WorkerManager
             this.controllerHost = controllerHost;
             this.exeFile = exeFile;
             this.workDir = workDir;
+            this.unresponsiveTimeout = unresponsiveTimeout;
         }
 
         #region Properties
@@ -140,6 +145,8 @@ namespace WorkerManager
                 this.Process.Start();
                 this.Process.PriorityClass = ProcessPriorityClass.Idle;
 
+                this.timerProcessCheck = new Timer(OnProcessCheckTimer, null, TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(5));
+
                 if (isRestart)
                 {
                     this.restartCount ++;
@@ -148,10 +155,47 @@ namespace WorkerManager
             }
         }
 
+        private void OnProcessCheckTimer(object state)
+        {
+            try
+            {
+                if (this.Process == null || this.Process.HasExited)
+                {
+                    return;
+                }
+
+                if (this.Process.Responding)
+                {
+                    processUnresponsiveSince = null;
+                }
+                else
+                {
+                    if (processUnresponsiveSince == null)
+                    {
+                        processUnresponsiveSince = DateTime.Now;
+                    }
+
+                    var unresponsiveTime = DateTime.Now.Subtract(this.processUnresponsiveSince.Value);
+                    if (unresponsiveTime > this.unresponsiveTimeout)
+                    {
+                        //kill all processes that hang longer than unresponsiveTimeout
+                        this.Process.Kill();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // whatever happens here, we don't care
+            }
+        }
+
         public void Kill()
         {
             if (this.Process != null)
             {
+                this.timerProcessCheck?.Dispose();
+                this.timerProcessCheck = null;
+
                 this.Process.Exited -= OnWorkerStopped;
 
                 if (!this.Process.HasExited)
@@ -190,6 +234,9 @@ namespace WorkerManager
 
         private void OnWorkerStopped(object sender, EventArgs eventArgs)
         {
+            this.timerProcessCheck?.Dispose();
+            this.timerProcessCheck = null;
+
             var process = (Process)sender;
             process.Exited -= OnWorkerStopped;
             process.Dispose();
