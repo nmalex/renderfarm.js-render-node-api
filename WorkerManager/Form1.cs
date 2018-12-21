@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -226,6 +227,11 @@ namespace WorkerManager
             {
                 var text1 = EnumerateOpenedWindows.GetWindowText(hwnd1);
                 sb.AppendLine($"{hwnd1.ToString("X")}, \"{text1}\"");
+
+                if (text1.ToLower().Contains("rendering"))
+                {
+                    EnumerateOpenedWindows.CaptureWindowToFile(hwnd1, "C:\\Temp\\1.png", ImageFormat.Png);
+                }
 
                 var handles = EnumerateOpenedWindows.GetAllChildrenWindowHandles(hwnd1, Int64.MaxValue);
                 foreach (var hwnd2 in handles)
