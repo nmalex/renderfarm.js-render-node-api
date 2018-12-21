@@ -110,6 +110,7 @@
         <File Id="System.Runtime.CompilerServices.Unsafe.dll" Name="System.Runtime.CompilerServices.Unsafe.dll" Source="$(var.WorkerManager.TargetDir)System.Runtime.CompilerServices.Unsafe.dll" />
         <File Id="System.Runtime.CompilerServices.Unsafe.xml" Name="System.Runtime.CompilerServices.Unsafe.xml" Source="$(var.WorkerManager.TargetDir)System.Runtime.CompilerServices.Unsafe.xml" />
         <File Id="System.Runtime.InteropServices.RuntimeInformation.dll" Name="System.Runtime.InteropServices.RuntimeInformation.dll" Source="$(var.WorkerManager.TargetDir)System.Runtime.InteropServices.RuntimeInformation.dll" />
+        
 
         <!-- <ServiceInstall Id="ServiceInstaller" Type="ownProcess" Vital="yes" Name="Rayys.WorkerManager" DisplayName="Rayys Worker Manager" Description="Safety network scanner and listener" Start="auto" Account="LocalSystem" ErrorControl="ignore" Interactive="no">
           <util:ServiceConfig FirstFailureActionType="restart" SecondFailureActionType="restart" ThirdFailureActionType="none" ResetPeriodInDays="5" RestartServiceDelayInSeconds="10"/>

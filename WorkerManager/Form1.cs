@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -216,12 +217,22 @@ namespace WorkerManager
 
         private void button1_Click(object sender, EventArgs e)
         {
-            var strWindowsTitles = EnumerateOpenedWindows.GetDesktopWindowsTitles();
             var sb = new StringBuilder();
 
-            foreach (string strTitle in strWindowsTitles)
+            var desktopHwnds = EnumerateOpenedWindows.GetDesktopWindows();
+            // var workerProcess = Process.GetProcessById((int)this.workersManager.Workers.First().Pid);
+            //var handles = EnumerateOpenedWindows.GetChildWindowHandles(workerProcess);
+            foreach (var hwnd1 in desktopHwnds)
             {
-                sb.AppendLine(strTitle);
+                var text1 = EnumerateOpenedWindows.GetWindowText(hwnd1);
+                sb.AppendLine($"{hwnd1.ToString("X")}, \"{text1}\"");
+
+                var handles = EnumerateOpenedWindows.GetAllChildrenWindowHandles(hwnd1, Int64.MaxValue);
+                foreach (var hwnd2 in handles)
+                {
+                    var text2 = EnumerateOpenedWindows.GetWindowText(hwnd2);
+                    sb.AppendLine($"{hwnd2.ToString("X")}, \"{text2}\"");
+                }
             }
 
             File.WriteAllText("C:\\Temp\\AllWindows.txt", sb.ToString());

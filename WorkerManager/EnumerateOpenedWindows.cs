@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -9,7 +10,7 @@ namespace WorkerManager
     {
         const int MAXTITLE = 255;
 
-        private static List<string> lstTitles;
+        private static List<IntPtr> lstTitles;
 
         private delegate bool EnumDelegate(IntPtr hWnd, int lParam);
 
@@ -32,13 +33,12 @@ namespace WorkerManager
         static extern IntPtr FindWindowEx(IntPtr hwndParent,
           IntPtr hwndChildAfter, string lpszClass, string lpszWindow);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
         private static bool EnumWindowsProc(IntPtr hWnd, int lParam)
         {
-            string strTitle = GetWindowText(hWnd);
-            if (strTitle != "" & IsWindowVisible(hWnd)) //
-            {
-                lstTitles.Add(strTitle);
-            }
+            lstTitles.Add(hWnd);
             return true;
         }
 
@@ -55,13 +55,23 @@ namespace WorkerManager
             return strbTitle.ToString();
         }
 
+        public static List<IntPtr> GetChildWindowHandles(Process process)
+        {
+            return GetAllChildrenWindowHandles(process.MainWindowHandle, Int64.MaxValue);
+        }
+
+        public static string GetWindowTitle(IntPtr hWnd)
+        {
+            return GetWindowText(hWnd);
+        }
+
         /// <summary>
         /// Return titles of all visible windows on desktop
         /// </summary>
         /// <returns>List of titles in type of string</returns>
-        public static string[] GetDesktopWindowsTitles()
+        public static IntPtr[] GetDesktopWindows()
         {
-            lstTitles = new List<string>();
+            lstTitles = new List<IntPtr>();
             EnumDelegate delEnumfunc = new EnumDelegate(EnumWindowsProc);
             bool bSuccessful = EnumDesktopWindows(IntPtr.Zero, delEnumfunc, IntPtr.Zero); //for current desktop
 
@@ -78,10 +88,10 @@ namespace WorkerManager
             }
         }
 
-        public static List<IntPtr> GetAllChildrenWindowHandles(IntPtr hParent, int maxCount)
+        public static List<IntPtr> GetAllChildrenWindowHandles(IntPtr hParent, Int64 maxCount)
         {
             List<IntPtr> result = new List<IntPtr>();
-            int ct = 0;
+            Int64 ct = 0;
             IntPtr prevChild = IntPtr.Zero;
             IntPtr currChild = IntPtr.Zero;
             while (true && ct < maxCount)
@@ -91,6 +101,8 @@ namespace WorkerManager
                 result.Add(currChild);
                 prevChild = currChild;
                 ++ct;
+
+                result.AddRange(GetAllChildrenWindowHandles(currChild, maxCount));
             }
             return result;
         }
