@@ -20,6 +20,9 @@ namespace WorkerManager
         private bool thread1Running = true;
         private readonly WorkerManagerEndpoint endpoint;
 
+        // ReSharper disable once InconsistentNaming
+        private const int TCP_MANAGEMENT_PORT = 17900;
+
         public Form1()
         {
             InitializeComponent();
@@ -35,7 +38,14 @@ namespace WorkerManager
             this.workersManager.Load();
 
             this.endpoint = new WorkerManagerEndpoint(this.workersManager);
-            this.endpoint.Listen("0.0.0.0", 11000);
+            this.endpoint.Listen(TCP_MANAGEMENT_PORT);
+
+            var endpointUrl = $"http://localhost:{TCP_MANAGEMENT_PORT}/worker";
+            this.linkEndpoint.Text = endpointUrl;
+            this.linkEndpoint.LinkClicked += (sender, args) =>
+            {
+                Process.Start("explorer.exe", $"\"{endpointUrl}\"");
+            };
         }
 
         private void ThreadStart1(object obj)

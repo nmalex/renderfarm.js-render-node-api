@@ -118,8 +118,7 @@
         <ServiceControl Id="StartService" Start="install" Stop="both" Remove="both" Name="Rayys.WorkerManager" Wait="yes" />
         <ServiceControl Id="StopService" Stop="uninstall" Remove="uninstall" Name="Rayys.WorkerManager" Wait="yes" />  -->
 
-        <firewall:FirewallException Id="Allow.Rayys.WorkerManager.Service.Udp" Name="Rayys Worker Manager" Description="Allow Inbound Udp" File="WorkerManager.exe" IgnoreFailure="no" Profile="all" Protocol="udp" Scope="any" ></firewall:FirewallException>
-        <firewall:FirewallException Id="Allow.Rayys.WorkerManager.Service.Tcp" Name="Rayys Worker Manager" Description="Allow Inbound Tcp" File="WorkerManager.exe" IgnoreFailure="no" Profile="all" Protocol="tcp" Scope="any" ></firewall:FirewallException>
+        <firewall:FirewallException Id="Allow.Rayys.WorkerManager.Service.Tcp" Name="Rayys Worker Manager" Description="Allow Inbound Tcp Connections" IgnoreFailure="no" Profile="all" Protocol="tcp" Scope="any" Port="17900" ></firewall:FirewallException>
       </Component>
     </ComponentGroup>
 
