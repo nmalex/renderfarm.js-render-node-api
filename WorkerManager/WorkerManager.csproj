@@ -96,6 +96,7 @@
     <Compile Include="Utils.cs" />
     <Compile Include="VrayRenderProgressSniffer.cs" />
     <Compile Include="Worker.cs" />
+    <Compile Include="WorkerInfo.cs" />
     <Compile Include="WorkerManagerEndpoint.cs" />
     <Compile Include="WorkersManager.cs" />
     <EmbeddedResource Include="Form1.resx">

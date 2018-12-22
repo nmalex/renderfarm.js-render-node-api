@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Threading;
 using Microsoft.Net.Http.Server;
@@ -46,7 +47,7 @@ namespace WorkerManager
         private void ListenThread(object obj)
         {
             var settings = new WebListenerSettings();
-            settings.UrlPrefixes.Add($"http://{this.host}:{this.port}");
+            settings.UrlPrefixes.Add($"http://192.168.88.130:{this.port}");
 
             this.listener = new WebListener(settings);
             this.listener.Start();
@@ -90,7 +91,7 @@ namespace WorkerManager
 
         private void HandleGetRequest(RequestContext context)
         {
-            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = context.Request.Path.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries);
 
             var resource = parts[0];
             if (resource == "worker")
@@ -106,7 +107,7 @@ namespace WorkerManager
 
         private void HandlePostRequest(RequestContext context)
         {
-            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = context.Request.Path.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries);
 
             var resource = parts[0];
             if (resource == "worker")
@@ -120,7 +121,7 @@ namespace WorkerManager
 
         private void HandlePutRequest(RequestContext context)
         {
-            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = context.Request.Path.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries);
 
             var resource = parts[0];
             if (resource == "worker")
@@ -138,7 +139,7 @@ namespace WorkerManager
 
         private void HandleOptionsRequest(RequestContext context)
         {
-            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = context.Request.Path.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries);
 
             var resource = parts[0];
             if (resource == "worker")
@@ -156,7 +157,7 @@ namespace WorkerManager
 
         private void HandleDeleteRequest(RequestContext context)
         {
-            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = context.Request.Path.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries);
 
             var resource = parts[0];
             if (resource == "worker")
@@ -167,7 +168,7 @@ namespace WorkerManager
 
         private void HandleDeleteWorker(RequestContext context)
         {
-            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = context.Request.Path.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries);
 
             int workerPort;
             if (!int.TryParse(parts[1], out workerPort))
@@ -203,9 +204,78 @@ namespace WorkerManager
         }
     }
 
-    public class WorkerInfo
+    public class WebServer
     {
-        [JsonProperty(PropertyName = "port")]
-        public int Port { get; set; }
+        private readonly HttpListener _listener = new HttpListener();
+        private readonly Func<HttpListenerRequest, string> _responderMethod;
+
+        public WebServer(string[] prefixes, Func<HttpListenerRequest, string> method)
+        {
+            if (!HttpListener.IsSupported)
+                throw new NotSupportedException(
+                    "Needs Windows XP SP2, Server 2003 or later.");
+
+            // URI prefixes are required, for example 
+            // "http://0.0.0.0:11000/".
+            if (prefixes == null || prefixes.Length == 0)
+                throw new ArgumentException("prefixes");
+
+            // A responder method is required
+            if (method == null)
+                throw new ArgumentException("method");
+
+            foreach (string s in prefixes)
+                _listener.Prefixes.Add(s);
+
+            _responderMethod = method;
+            _listener.Start();
+        }
+
+        public WebServer(Func<HttpListenerRequest, string> method, params string[] prefixes)
+            : this(prefixes, method)
+        {
+        }
+
+        public void Run()
+        {
+            ThreadPool.QueueUserWorkItem((o) =>
+            {
+                Console.WriteLine("Webserver running...");
+                try
+                {
+                    while (_listener.IsListening)
+                    {
+                        ThreadPool.QueueUserWorkItem((c) =>
+                        {
+                            var ctx = c as HttpListenerContext;
+                            try
+                            {
+                                string rstr = _responderMethod(ctx.Request);
+                                byte[] buf = Encoding.UTF8.GetBytes(rstr);
+                                ctx.Response.ContentLength64 = buf.Length;
+                                ctx.Response.OutputStream.Write(buf, 0, buf.Length);
+                            }
+                            catch
+                            {
+                            } // suppress any exceptions
+                            finally
+                            {
+                                // always close the stream
+                                ctx.Response.OutputStream.Close();
+                            }
+                        }, _listener.GetContext());
+                    }
+                }
+                catch
+                {
+                } // suppress any exceptions
+            });
+        }
+
+        public void Stop()
+        {
+            _listener.Stop();
+            _listener.Close();
+        }
     }
 }

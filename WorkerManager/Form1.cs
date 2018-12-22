@@ -35,7 +35,7 @@ namespace WorkerManager
             this.workersManager.Load();
 
             this.endpoint = new WorkerManagerEndpoint(this.workersManager);
-            this.endpoint.Listen("localhost", 11000);
+            this.endpoint.Listen("0.0.0.0", 11000);
         }
 
         private void ThreadStart1(object obj)
