@@ -23,8 +23,10 @@ namespace WorkerManager
         private int restartCount;
         private Timer timerProcessCheck;
         private DateTime? processUnresponsiveSince;
+        private VrayRenderProgressSniffer renderingProgressSniffer;
 
         public event EventHandler Restarted;
+        public event EventHandler<string> ProgressChanged;
 
         public Worker(string ip, int port, string controllerHost, string exeFile, string workDir, TimeSpan unresponsiveTimeout)
         {
@@ -45,7 +47,9 @@ namespace WorkerManager
 
         public int Port { get; }
 
-        public string Label => $"{this.Ip}:{this.Port} ({this.restartCount})";
+        public string VrayProgress { get; private set; }
+
+        public string Label => $"{this.Ip}:{this.Port} ({this.restartCount}) {this.renderingProgressSniffer.ProgressText}";
 
         private Process Process { get; set; }
 
@@ -107,6 +111,14 @@ namespace WorkerManager
             return this.CpuCounter.NextValue().ToString(CultureInfo.InvariantCulture);
         }
 
+        public void BringToFront()
+        {
+            if (this.Process != null)
+            {
+                EnumerateOpenedWindows.SetForegroundWindow(this.Process.MainWindowHandle);
+            }
+        }
+
         public void Start()
         {
             this.Start(false);
@@ -146,6 +158,8 @@ namespace WorkerManager
                 this.Process.PriorityClass = ProcessPriorityClass.Idle;
 
                 this.timerProcessCheck = new Timer(OnProcessCheckTimer, null, TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(5));
+                this.renderingProgressSniffer = new VrayRenderProgressSniffer(this.Process);
+                this.renderingProgressSniffer.ProgressChanged += OnRenderProgressChanged;
 
                 if (isRestart)
                 {
@@ -155,6 +169,7 @@ namespace WorkerManager
             }
         }
 
+        //todo: Process check is SRP violation, Worker is responsible for restart
         private void OnProcessCheckTimer(object state)
         {
             try
@@ -180,6 +195,10 @@ namespace WorkerManager
                     {
                         //kill all processes that hang longer than unresponsiveTimeout
                         this.Process.Kill();
+
+                        this.renderingProgressSniffer.ProgressChanged -= OnRenderProgressChanged;
+                        this.renderingProgressSniffer.Dispose();
+                        this.renderingProgressSniffer = null;
                     }
                 }
             }
@@ -193,6 +212,10 @@ namespace WorkerManager
         {
             if (this.Process != null)
             {
+                this.renderingProgressSniffer.ProgressChanged -= OnRenderProgressChanged;
+                this.renderingProgressSniffer?.Dispose();
+                this.renderingProgressSniffer = null;
+
                 this.timerProcessCheck?.Dispose();
                 this.timerProcessCheck = null;
 
@@ -209,6 +232,13 @@ namespace WorkerManager
 
         public void Dispose()
         {
+            if (this.renderingProgressSniffer != null)
+            {
+                this.renderingProgressSniffer.ProgressChanged -= OnRenderProgressChanged;
+                this.renderingProgressSniffer.Dispose();
+                this.renderingProgressSniffer = null;
+            }
+
             // dispose cpu perf counter
             lock (this.cpuCounterLock)
             {
@@ -234,6 +264,10 @@ namespace WorkerManager
 
         private void OnWorkerStopped(object sender, EventArgs eventArgs)
         {
+            this.renderingProgressSniffer.ProgressChanged -= OnRenderProgressChanged;
+            this.renderingProgressSniffer?.Dispose();
+            this.renderingProgressSniffer = null;
+
             this.timerProcessCheck?.Dispose();
             this.timerProcessCheck = null;
 
@@ -242,6 +276,12 @@ namespace WorkerManager
             process.Dispose();
 
             this.Restart();
+        }
+
+        private void OnRenderProgressChanged(object sender, string progressText)
+        {
+            this.VrayProgress = progressText;
+            this.ProgressChanged?.Invoke(this, progressText);
         }
 
         private static string GetInstanceNameForProcessId(int processId)

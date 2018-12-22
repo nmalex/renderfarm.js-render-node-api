@@ -71,6 +71,7 @@ namespace WorkerManager
             }
 
             worker.Restarted += this.OnWorkerRestarted;
+            worker.ProgressChanged += this.OnWorkerProgressChanged;
             worker.Start();
 
             this.Added?.Invoke(this, worker);
@@ -78,6 +79,11 @@ namespace WorkerManager
         }
 
         private void OnWorkerRestarted(object sender, EventArgs e)
+        {
+            this.Updated?.Invoke(this, (IWorker)sender);
+        }
+
+        private void OnWorkerProgressChanged(object sender, string e)
         {
             this.Updated?.Invoke(this, (IWorker)sender);
         }

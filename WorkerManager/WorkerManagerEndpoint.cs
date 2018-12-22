@@ -90,44 +90,68 @@ namespace WorkerManager
 
         private void HandleGetRequest(RequestContext context)
         {
-            var serializer = new JsonSerializer();
-            var sb = new StringBuilder();
-            serializer.Serialize(new StringWriter(sb), this.workersManager.Workers);
+            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
 
-            WriteHeaders(context);
-            WriteResponse(context, sb.ToString());
+            var resource = parts[0];
+            if (resource == "worker")
+            {
+                var serializer = new JsonSerializer();
+                var sb = new StringBuilder();
+                serializer.Serialize(new StringWriter(sb), this.workersManager.Workers);
+
+                WriteHeaders(context);
+                WriteResponse(context, sb.ToString());
+            }
         }
 
         private void HandlePostRequest(RequestContext context)
         {
-            var worker = this.workersManager.AddWorker();
+            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
 
-            WriteHeaders(context);
-            WriteResponse(context, $"{{\"success\": true, \"port\": {worker.Port}}}");
+            var resource = parts[0];
+            if (resource == "worker")
+            {
+                var worker = this.workersManager.AddWorker();
+
+                WriteHeaders(context);
+                WriteResponse(context, $"{{\"success\": true, \"port\": {worker.Port}}}");
+            }
         }
 
         private void HandlePutRequest(RequestContext context)
         {
-            var s = new StreamReader(context.Request.Body);
-            var body = s.ReadToEnd();
+            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
 
-            var a = new JsonSerializer();
-            var c = a.Deserialize<WorkerInfo>(new JsonTextReader(new StringReader(body)));
+            var resource = parts[0];
+            if (resource == "worker")
+            {
+                var s = new StreamReader(context.Request.Body);
+                var body = s.ReadToEnd();
 
-            WriteHeaders(context);
-            WriteResponse(context, $"{{\"error\": \"not implemented\", \"port\": {c.Port}}}");
+                var a = new JsonSerializer();
+                var c = a.Deserialize<WorkerInfo>(new JsonTextReader(new StringReader(body)));
+
+                WriteHeaders(context);
+                WriteResponse(context, $"{{\"error\": \"not implemented\", \"port\": {c.Port}}}");
+            }
         }
 
         private void HandleOptionsRequest(RequestContext context)
         {
-            var bytes = Encoding.ASCII.GetBytes(string.Empty);
-            context.Response.ContentLength = bytes.Length;
-            WriteHeaders(context);
+            var parts = context.Request.Path.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
 
-            context.Response.Body.WriteAsync(bytes, 0, bytes.Length).ContinueWith(p =>
+            var resource = parts[0];
+            if (resource == "worker")
             {
-                context.Dispose();
-            });
+                var bytes = Encoding.ASCII.GetBytes(string.Empty);
+                context.Response.ContentLength = bytes.Length;
+                WriteHeaders(context);
+
+                context.Response.Body.WriteAsync(bytes, 0, bytes.Length).ContinueWith(p =>
+                {
+                    context.Dispose();
+                });
+            }
         }
 
         private void HandleDeleteRequest(RequestContext context)

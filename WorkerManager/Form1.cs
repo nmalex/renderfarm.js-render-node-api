@@ -2,10 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -129,6 +125,8 @@ namespace WorkerManager
 
         private void MinimizeToSystemTray()
         {
+            this.TopMost = false;
+
             Hide();
             this.notifyIcon1.Visible = true;
             if (!this.tooltipShown)
@@ -195,11 +193,6 @@ namespace WorkerManager
             this.endpoint.Close();
         }
 
-        private void btnMinimize_Click(object sender, EventArgs e)
-        {
-            this.MinimizeToSystemTray();
-        }
-
         private void listView1_ItemSelectionChanged(object sender, ListViewItemSelectionChangedEventArgs e)
         {
             this.selectedItem = e.IsSelected ? e.Item : null;
@@ -216,32 +209,14 @@ namespace WorkerManager
             this.workersManager.DeleteWorker((IWorker)this.selectedItem.Tag);
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void listView1_DoubleClick(object sender, EventArgs e)
         {
-            var sb = new StringBuilder();
-
-            var desktopHwnds = EnumerateOpenedWindows.GetDesktopWindows();
-            // var workerProcess = Process.GetProcessById((int)this.workersManager.Workers.First().Pid);
-            //var handles = EnumerateOpenedWindows.GetChildWindowHandles(workerProcess);
-            foreach (var hwnd1 in desktopHwnds)
+            var selectedWorker = this.selectedItem?.Tag as IWorker;
+            if (selectedWorker?.Pid != null)
             {
-                var text1 = EnumerateOpenedWindows.GetWindowText(hwnd1);
-                sb.AppendLine($"{hwnd1.ToString("X")}, \"{text1}\"");
-
-                if (text1.ToLower().Contains("rendering"))
-                {
-                    EnumerateOpenedWindows.CaptureWindowToFile(hwnd1, "C:\\Temp\\1.png", ImageFormat.Png);
-                }
-
-                var handles = EnumerateOpenedWindows.GetAllChildrenWindowHandles(hwnd1, Int64.MaxValue);
-                foreach (var hwnd2 in handles)
-                {
-                    var text2 = EnumerateOpenedWindows.GetWindowText(hwnd2);
-                    sb.AppendLine($"{hwnd2.ToString("X")}, \"{text2}\"");
-                }
+                selectedWorker.BringToFront();
+                this.TopMost = true;
             }
-
-            File.WriteAllText("C:\\Temp\\AllWindows.txt", sb.ToString());
         }
     }
 }
