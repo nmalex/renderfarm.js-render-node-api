@@ -275,6 +275,8 @@ namespace WorkerManager
             process.Exited -= OnWorkerStopped;
             process.Dispose();
 
+            Thread.Sleep(1000);
+
             this.Restart();
         }
 

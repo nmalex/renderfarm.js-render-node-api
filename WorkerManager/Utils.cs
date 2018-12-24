@@ -1,10 +1,24 @@
 using System;
+using System.Configuration;
 using System.Windows.Forms;
 
 namespace WorkerManager
 {
     public static class Utils
     {
+        public static bool SafeGet(this Configuration config, string key, bool fallbackValue)
+        {
+            bool value;
+            if (bool.TryParse(config.AppSettings.Settings[key].Value, out value))
+            {
+                return value;
+            }
+
+            config.AppSettings.Settings[key].Value = fallbackValue.ToString().ToLower();
+            config.Save(ConfigurationSaveMode.Modified);
+            return fallbackValue;
+        }
+
         public static void SafeInvoke(this Control uiElement, Action updater, Action<object> onComplete = null, object p = null, bool forceSynchronous = true)
         {
             if (uiElement == null)

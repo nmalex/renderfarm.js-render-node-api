@@ -4,7 +4,12 @@ using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -24,9 +29,11 @@ namespace WorkerManager
         private readonly WorkerManagerEndpoint endpoint;
         private readonly Configuration config;
         private Process spawnerProcess;
-
-        // ReSharper disable once InconsistentNaming
-        private const int TCP_MANAGEMENT_PORT = 17900;
+        private readonly System.Threading.Timer heartbeatTimer;
+        private readonly string controllerHost;
+        private IPAddress localIp;
+        private Socket heartbeatSocket;
+        private IPEndPoint heartbeatEndpoint;
 
         public Form1()
         {
@@ -34,6 +41,8 @@ namespace WorkerManager
             SetProcessPrio(ProcessPriorityClass.High);
 
             this.config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+
+            var managementPort = int.Parse(this.config.AppSettings.Settings["management_port"].Value);
 
             this.thread1 = new Thread(ThreadStart1);
             this.thread1.Start(null);
@@ -45,27 +54,70 @@ namespace WorkerManager
             this.workersManager.Load();
 
             this.endpoint = new WorkerManagerEndpoint(this.workersManager);
-            this.endpoint.Listen(TCP_MANAGEMENT_PORT);
+            this.endpoint.Listen(managementPort);
 
-            var endpointUrl = $"http://localhost:{TCP_MANAGEMENT_PORT}/worker";
+            var endpointUrl = $"http://localhost:{managementPort}/worker";
             this.linkEndpoint.Text = endpointUrl;
             this.linkEndpoint.LinkClicked += (sender, args) =>
             {
                 Process.Start("explorer.exe", $"\"{endpointUrl}\"");
             };
 
-            bool runSpawner;
-            if (bool.TryParse(config.AppSettings.Settings["run_spawner"].Value, out runSpawner))
-            {
-                this.cbSpawner.Checked = runSpawner;
-            }
-            else
-            {
-                config.AppSettings.Settings["run_spawner"].Value = "false";
-                config.Save(ConfigurationSaveMode.Modified);
-            }
+            this.cbSpawner.Checked = this.config.SafeGet("run_spawner", false);
+
+            this.controllerHost = this.config.AppSettings.Settings["controller_host"].Value;
+            this.heartbeatTimer = new System.Threading.Timer(SendHeartbeat, null, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(1));
+            NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
 
             this.ShowWindow();
+        }
+
+        private void InitializeHeartbeat()
+        {
+            this.heartbeatSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
+            var receiverAddr = IPAddress.Parse(this.controllerHost);
+            var heartbeatPort = int.Parse(this.config.AppSettings.Settings["heartbeat_port"].Value);
+
+            this.heartbeatEndpoint = new IPEndPoint(receiverAddr, heartbeatPort);
+
+            this.UpdateNetworkAddress();
+        }
+
+        private void UpdateNetworkAddress()
+        {
+            this.localIp = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up
+                            && n.NetworkInterfaceType != NetworkInterfaceType.Loopback
+                            &&
+                            n.GetIPProperties()
+                                .UnicastAddresses.Any(a => a.Address.AddressFamily == AddressFamily.InterNetwork))
+                .Select(
+                    m =>
+                        m.GetIPProperties()
+                            .UnicastAddresses.FirstOrDefault(
+                                a2 => a2.Address.AddressFamily == AddressFamily.InterNetwork))
+                .Select(u => u.Address)
+                .FirstOrDefault();
+        }
+
+        private void OnNetworkAddressChanged(object sender, EventArgs e)
+        {
+            UpdateNetworkAddress();
+        }
+
+        private void SendHeartbeat(object state)
+        {
+            if (this.heartbeatSocket == null || !this.heartbeatSocket.Connected)
+            {
+                this.heartbeatSocket?.Dispose();
+                this.InitializeHeartbeat();
+            }
+
+            var runningVraySpawner = this.spawnerProcess != null && !this.spawnerProcess.HasExited;
+            var message = $"{{\"ip\": \"{this.localIp}\", \"vray_spawner\": {runningVraySpawner.ToString().ToLower()}, \"worker_count\": {this.workersManager.Count}}}";
+            var sendBuffer = Encoding.ASCII.GetBytes(message);
+            this.heartbeatSocket.SendTo(sendBuffer, this.heartbeatEndpoint);
         }
 
         private void ThreadStart1(object obj)
@@ -225,6 +277,11 @@ namespace WorkerManager
             DisableUi();
 
             this.appExiting = true;
+            this.heartbeatTimer.Dispose();
+
+            NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
+            this.heartbeatSocket?.Close();
+            this.heartbeatSocket?.Dispose();
 
             if (this.spawnerProcess != null)
             {
@@ -287,12 +344,11 @@ namespace WorkerManager
             var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             if (dir == null) return;
 
-            var filename = config.FilePath;
-            var lastWriteTimeBefore = File.GetLastWriteTime(filename);
+            var lastWriteTimeBefore = File.GetLastWriteTime(config.FilePath);
             var startInfo = new ProcessStartInfo
             {
                 FileName = "notepad.exe",
-                Arguments = filename,
+                Arguments = config.FilePath,
                 WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System)
             };
             var process = Process.Start(startInfo);
@@ -301,29 +357,34 @@ namespace WorkerManager
                 process.EnableRaisingEvents = true;
                 process.Exited += (o, args) =>
                 {
-                    var lastWriteTimeAfter = File.GetLastWriteTime(filename);
-                    if (DateTime.Equals(lastWriteTimeAfter, lastWriteTimeBefore))
-                    {
-                        //user did not save file
-                        return;
-                    }
-
-                    this.SafeInvoke(ExitApp, p =>
-                    {
-                        var newInstanceOfWorkerManager = new Process
-                        {
-                            StartInfo = new ProcessStartInfo
-                            {
-                                FileName = Path.GetFileName(Assembly.GetExecutingAssembly().Location),
-                                // ReSharper disable once AssignNullToNotNullAttribute
-                                WorkingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-                                Arguments = "/restart"
-                            }
-                        };
-                        newInstanceOfWorkerManager.Start();
-                    });
+                    this.CheckAppConfigChange(lastWriteTimeBefore);
                 };
             }
+        }
+
+        private void CheckAppConfigChange(DateTime lastWriteTimeBefore)
+        {
+            var lastWriteTimeAfter = File.GetLastWriteTime(config.FilePath);
+            if (DateTime.Equals(lastWriteTimeAfter, lastWriteTimeBefore))
+            {
+                //user did not save file
+                return;
+            }
+
+            this.SafeInvoke(ExitApp, p =>
+            {
+                var newInstanceOfWorkerManager = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = Path.GetFileName(Assembly.GetExecutingAssembly().Location),
+                        // ReSharper disable once AssignNullToNotNullAttribute
+                        WorkingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                        Arguments = "/restart"
+                    }
+                };
+                newInstanceOfWorkerManager.Start();
+            });
         }
 
         private void cbSpawner_CheckedChanged(object sender, EventArgs e)
@@ -364,6 +425,7 @@ namespace WorkerManager
         private void OnSpawnerExit(object sender, EventArgs e)
         {
             this.spawnerProcess.Exited -= OnSpawnerExit;
+            Thread.Sleep(1000);
             StartVraySpawner();
         }
     }
