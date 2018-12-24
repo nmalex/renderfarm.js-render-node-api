@@ -57,9 +57,6 @@ namespace WorkerManager
             this.controllerHost = this.config.AppSettings.Settings["controller_host"].Value;
 
             this.unresponsiveTimeout = TimeSpan.FromSeconds(int.Parse(this.config.AppSettings.Settings["unresponsive_timeout"].Value));
-
-            //this.totalCpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-            //this.totalRamCounter = new PerformanceCounter("Memory", "Available MBytes");
         }
 
         public IWorker AddWorker()

@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -35,6 +36,10 @@ namespace WorkerManager
         private IPAddress localIp;
         private Socket heartbeatSocket;
         private IPEndPoint heartbeatEndpoint;
+        private static int HeartbeatI;
+        private readonly PerformanceCounter totalCpuCounter;
+        private readonly PerformanceCounter totalRamCounter;
+        private float physicalRam;
 
         public Form1()
         {
@@ -76,11 +81,25 @@ namespace WorkerManager
 
             this.cbSpawner.Checked = this.config.SafeGet("run_spawner", false);
 
+            this.totalCpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            this.totalRamCounter = new PerformanceCounter("Memory", "Available MBytes");
+            this.physicalRam = GetPhysicalRamInstalled();
+
             this.controllerHost = this.config.AppSettings.Settings["controller_host"].Value;
             this.heartbeatTimer = new System.Threading.Timer(SendHeartbeat, null, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(1));
             NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
 
             this.ShowWindow();
+        }
+
+        private float GetPhysicalRamInstalled()
+        {
+            var memStatus = new MEMORYSTATUSEX();
+            if (GlobalMemoryStatusEx(memStatus))
+            {
+                return memStatus.ullTotalPhys / 1024.0f / 1024 / 1024;
+            }
+            return int.MaxValue;
         }
 
         private void InitializeHeartbeat()
@@ -126,7 +145,9 @@ namespace WorkerManager
             }
 
             var runningVraySpawner = this.spawnerProcess != null && !this.spawnerProcess.HasExited;
-            var message = $"{{\"ip\": \"{this.localIp}\", \"vray_spawner\": {runningVraySpawner.ToString().ToLower()}, \"worker_count\": {this.workersManager.Count}}}";
+            var cpuUsage = this.totalCpuCounter.NextValue().ToString("F3");
+            var ramUsage = (this.totalRamCounter.NextValue()/1024.0f/1024/1024).ToString("F3");
+            var message = $"{{\"id\":{++HeartbeatI}, \"type\":\"heartbeat\", \"sender\":\"worker-manager\", \"ip\":\"{this.localIp}\", \"vray_spawner\":{runningVraySpawner.ToString().ToLower()}, \"worker_count\":{this.workersManager.Count}, \"cpu_usage\":{cpuUsage}, \"ram_usage\":{ramUsage}, \"total_ram\":{this.physicalRam.ToString("F3")}}}";
             var sendBuffer = Encoding.ASCII.GetBytes(message);
             this.heartbeatSocket.SendTo(sendBuffer, this.heartbeatEndpoint);
         }
@@ -286,6 +307,7 @@ namespace WorkerManager
         private void ExitApp()
         {
             DisableUi();
+            this.listView1.Items.Clear();
 
             this.appExiting = true;
             this.heartbeatTimer.Dispose();
@@ -303,13 +325,12 @@ namespace WorkerManager
 
             this.workersManager.Close();
 
-            this.notifyIcon1.Visible = false;
-
             this.thread1Running = false;
             this.thread1.Join();
 
             this.endpoint.Close();
 
+            this.notifyIcon1.Visible = false;
             this.Close();
         }
 
@@ -464,5 +485,32 @@ namespace WorkerManager
                 // Process already exited.
             }
         }
+
+#pragma warning disable 169
+        // ReSharper disable ClassNeverInstantiated.Local
+        // ReSharper disable InconsistentNaming
+        // ReSharper disable MemberCanBePrivate.Local
+        // ReSharper disable NotAccessedField.Local
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private class MEMORYSTATUSEX
+        {
+            public uint dwLength;
+            public uint dwMemoryLoad;
+            public ulong ullTotalPhys;
+            public ulong ullAvailPhys;
+            public ulong ullTotalPageFile;
+            public ulong ullAvailPageFile;
+            public ulong ullTotalVirtual;
+            public ulong ullAvailVirtual;
+            public ulong ullAvailExtendedVirtual;
+            public MEMORYSTATUSEX()
+            {
+                this.dwLength = (uint)Marshal.SizeOf(typeof(NativeMethods.MEMORYSTATUSEX));
+            }
+        }
+
+        [return: MarshalAs(UnmanagedType.Bool)]
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX lpBuffer);
     }
 }
