@@ -5,7 +5,7 @@ namespace WorkerManager
 {
     public static class Utils
     {
-        public static void SafeInvoke(this Control uiElement, Action updater, bool forceSynchronous = true)
+        public static void SafeInvoke(this Control uiElement, Action updater, Action<object> onComplete = null, object p = null, bool forceSynchronous = true)
         {
             if (uiElement == null)
             {
@@ -16,11 +16,11 @@ namespace WorkerManager
             {
                 if (forceSynchronous)
                 {
-                    uiElement.Invoke((Action)delegate { SafeInvoke(uiElement, updater, true); });
+                    uiElement.Invoke((Action)delegate { SafeInvoke(uiElement, updater, onComplete, p); });
                 }
                 else
                 {
-                    uiElement.BeginInvoke((Action)delegate { SafeInvoke(uiElement, updater, false); });
+                    uiElement.BeginInvoke((Action)delegate { SafeInvoke(uiElement, updater, onComplete, p, false); });
                 }
             }
             else
@@ -30,8 +30,14 @@ namespace WorkerManager
                     throw new ObjectDisposedException("Control is already disposed.");
                 }
 
-                updater();
+                Update(updater, onComplete, p);
             }
+        }
+
+        private static void Update(Action updater, Action<object> onComplete, object p)
+        {
+            updater();
+            onComplete?.Invoke(p);
         }
     }
 }

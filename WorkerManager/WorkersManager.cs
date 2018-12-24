@@ -10,6 +10,7 @@ namespace WorkerManager
 {
     public class WorkersManager : IWorkersManager
     {
+        private readonly Configuration config;
         private readonly Dictionary<int, IWorker> workers = new Dictionary<int, IWorker>();
 
         private readonly string workDir;
@@ -17,7 +18,6 @@ namespace WorkerManager
         private readonly TimeSpan unresponsiveTimeout;
 
         static readonly Random Rnd = new Random();
-        private static readonly Configuration Config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
 
         private readonly string controllerHost;
         private readonly object sync = new object();
@@ -48,13 +48,15 @@ namespace WorkerManager
             }
         }
 
-        public WorkersManager()
+        public WorkersManager(Configuration config)
         {
-            this.workDir = Config.AppSettings.Settings["work_dir"].Value;
-            this.exeFile = Config.AppSettings.Settings["exe_file"].Value;
-            this.controllerHost = Config.AppSettings.Settings["controller_host"].Value;
+            this.config = config;
 
-            this.unresponsiveTimeout = TimeSpan.FromSeconds(int.Parse(Config.AppSettings.Settings["unresponsive_timeout"].Value));
+            this.workDir = this.config.AppSettings.Settings["work_dir"].Value;
+            this.exeFile = this.config.AppSettings.Settings["exe_file"].Value;
+            this.controllerHost = this.config.AppSettings.Settings["controller_host"].Value;
+
+            this.unresponsiveTimeout = TimeSpan.FromSeconds(int.Parse(this.config.AppSettings.Settings["unresponsive_timeout"].Value));
 
             //this.totalCpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
             //this.totalRamCounter = new PerformanceCounter("Memory", "Available MBytes");
@@ -156,22 +158,22 @@ namespace WorkerManager
         private int GetWorkerCountSettings()
         {
             int workerCount;
-            if (int.TryParse(Config.AppSettings.Settings["worker_count"].Value, out workerCount))
+            if (int.TryParse(this.config.AppSettings.Settings["worker_count"].Value, out workerCount))
             {
                 return workerCount;
             }
             else
             {
-                Config.AppSettings.Settings["worker_count"].Value = "0";
-                Config.Save(ConfigurationSaveMode.Modified);
+                this.config.AppSettings.Settings["worker_count"].Value = "0";
+                this.config.Save(ConfigurationSaveMode.Modified);
                 return 0;
             }
         }
 
         private void SetWorkerCountSettings(int workerCount)
         {
-            Config.AppSettings.Settings["worker_count"].Value = workerCount.ToString();
-            Config.Save(ConfigurationSaveMode.Modified);
+            this.config.AppSettings.Settings["worker_count"].Value = workerCount.ToString();
+            this.config.Save(ConfigurationSaveMode.Modified);
         }
 
         // ReSharper disable once UnusedMember.Local

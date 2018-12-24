@@ -22,6 +22,8 @@ namespace WorkerManager
         private readonly Thread thread1;
         private bool thread1Running = true;
         private readonly WorkerManagerEndpoint endpoint;
+        private readonly Configuration config;
+        private Process spawnerProcess;
 
         // ReSharper disable once InconsistentNaming
         private const int TCP_MANAGEMENT_PORT = 17900;
@@ -31,10 +33,12 @@ namespace WorkerManager
             InitializeComponent();
             SetProcessPrio(ProcessPriorityClass.High);
 
+            this.config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+
             this.thread1 = new Thread(ThreadStart1);
             this.thread1.Start(null);
 
-            this.workersManager = new WorkersManager();
+            this.workersManager = new WorkersManager(config);
             this.workersManager.Added += OnWorkerAdded;
             this.workersManager.Updated += OnWorkerUpdated;
             this.workersManager.Deleted += OnWorkerDeleted;
@@ -49,6 +53,19 @@ namespace WorkerManager
             {
                 Process.Start("explorer.exe", $"\"{endpointUrl}\"");
             };
+
+            bool runSpawner;
+            if (bool.TryParse(config.AppSettings.Settings["run_spawner"].Value, out runSpawner))
+            {
+                this.cbSpawner.Checked = runSpawner;
+            }
+            else
+            {
+                config.AppSettings.Settings["run_spawner"].Value = "false";
+                config.Save(ConfigurationSaveMode.Modified);
+            }
+
+            this.ShowWindow();
         }
 
         private void ThreadStart1(object obj)
@@ -63,7 +80,14 @@ namespace WorkerManager
                 // The program will block until somebody signals the handle.
                 if (waitForSignal.WaitOne(TimeSpan.FromSeconds(1)))
                 {
-                    this.Invoke((MethodInvoker) ShowWindow);
+                    try
+                    {
+                        this.Invoke((MethodInvoker) ShowWindow);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // ignore it
+                    }
                 }
             }
         }
@@ -193,17 +217,43 @@ namespace WorkerManager
 
         private void btnExitApp_Click(object sender, EventArgs e)
         {
+            this.ExitApp();
+        }
+
+        private void ExitApp()
+        {
+            DisableUi();
+
             this.appExiting = true;
+
+            if (this.spawnerProcess != null)
+            {
+                this.spawnerProcess.Exited -= OnSpawnerExit;
+                this.spawnerProcess.Kill();
+                this.spawnerProcess = null;
+            }
 
             this.workersManager.Close();
 
             this.notifyIcon1.Visible = false;
-            this.Close();
 
             this.thread1Running = false;
             this.thread1.Join();
 
             this.endpoint.Close();
+
+            this.Close();
+        }
+
+        private void DisableUi()
+        {
+            this.btnExitApp.Enabled = false;
+            this.btnAddWorker.Enabled = false;
+            this.btnDeleteWorker.Enabled = false;
+            this.cbSpawner.Enabled = false;
+            this.linkEndpoint.Visible = false;
+            this.btnSettings.Enabled = false;
+            this.listView1.Enabled = false;
         }
 
         private void listView1_ItemSelectionChanged(object sender, ListViewItemSelectionChangedEventArgs e)
@@ -237,7 +287,6 @@ namespace WorkerManager
             var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             if (dir == null) return;
 
-            var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var filename = config.FilePath;
             var lastWriteTimeBefore = File.GetLastWriteTime(filename);
             var startInfo = new ProcessStartInfo
@@ -258,10 +307,64 @@ namespace WorkerManager
                         //user did not save file
                         return;
                     }
-                };
 
-                //todo: now reload settings
+                    this.SafeInvoke(ExitApp, p =>
+                    {
+                        var newInstanceOfWorkerManager = new Process
+                        {
+                            StartInfo = new ProcessStartInfo
+                            {
+                                FileName = Path.GetFileName(Assembly.GetExecutingAssembly().Location),
+                                // ReSharper disable once AssignNullToNotNullAttribute
+                                WorkingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                                Arguments = "/restart"
+                            }
+                        };
+                        newInstanceOfWorkerManager.Start();
+                    });
+                };
             }
+        }
+
+        private void cbSpawner_CheckedChanged(object sender, EventArgs e)
+        {
+            config.AppSettings.Settings["run_spawner"].Value = this.cbSpawner.Checked.ToString();
+            config.Save(ConfigurationSaveMode.Modified);
+
+            if (this.cbSpawner.Checked)
+            {
+                this.StartVraySpawner();
+            }
+            else
+            {
+                if (this.spawnerProcess != null)
+                {
+                    this.spawnerProcess.Exited -= OnSpawnerExit;
+                    this.spawnerProcess.Kill();
+                    this.spawnerProcess = null;
+                }
+            }
+        }
+
+        private void StartVraySpawner()
+        {
+            this.spawnerProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = config.AppSettings.Settings["spawner_exe"].Value,
+                    WorkingDirectory = config.AppSettings.Settings["work_dir"].Value
+                },
+                EnableRaisingEvents = true
+            };
+            this.spawnerProcess.Exited += OnSpawnerExit;
+            this.spawnerProcess.Start();
+        }
+
+        private void OnSpawnerExit(object sender, EventArgs e)
+        {
+            this.spawnerProcess.Exited -= OnSpawnerExit;
+            StartVraySpawner();
         }
     }
 }

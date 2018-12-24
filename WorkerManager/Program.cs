@@ -10,8 +10,14 @@ namespace WorkerManager
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            if (args.Length == 1 && args[0] == "/restart")
+            {
+                StartApp();
+                return;
+            }
+
             using (Mutex mutex = new Mutex(false, "Global\\" + appGuid))
             {
                 if (!mutex.WaitOne(0, false))
@@ -25,10 +31,15 @@ namespace WorkerManager
                     return;
                 }
 
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new Form1());
+                StartApp();
             }
+        }
+
+        private static void StartApp()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1());
         }
 
         private static string appGuid = "a7e6d09e-bbaa-48bf-a0e2-fc146bcfbd8f";

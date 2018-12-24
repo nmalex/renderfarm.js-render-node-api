@@ -38,6 +38,7 @@
             this.lblWorkersCount = new System.Windows.Forms.Label();
             this.linkEndpoint = new System.Windows.Forms.LinkLabel();
             this.btnSettings = new System.Windows.Forms.Button();
+            this.cbSpawner = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // notifyIcon1
@@ -52,7 +53,7 @@
             // btnExitApp
             // 
             this.btnExitApp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnExitApp.Location = new System.Drawing.Point(777, 530);
+            this.btnExitApp.Location = new System.Drawing.Point(777, 581);
             this.btnExitApp.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnExitApp.Name = "btnExitApp";
             this.btnExitApp.Size = new System.Drawing.Size(75, 28);
@@ -67,7 +68,7 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.listView1.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.listView1.Location = new System.Drawing.Point(12, 7);
+            this.listView1.Location = new System.Drawing.Point(12, 50);
             this.listView1.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.listView1.Name = "listView1";
             this.listView1.Size = new System.Drawing.Size(840, 500);
@@ -79,7 +80,7 @@
             // btnAddWorker
             // 
             this.btnAddWorker.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnAddWorker.Location = new System.Drawing.Point(12, 529);
+            this.btnAddWorker.Location = new System.Drawing.Point(12, 581);
             this.btnAddWorker.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnAddWorker.Name = "btnAddWorker";
             this.btnAddWorker.Size = new System.Drawing.Size(75, 28);
@@ -92,7 +93,7 @@
             // 
             this.btnDeleteWorker.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnDeleteWorker.Enabled = false;
-            this.btnDeleteWorker.Location = new System.Drawing.Point(93, 529);
+            this.btnDeleteWorker.Location = new System.Drawing.Point(93, 581);
             this.btnDeleteWorker.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnDeleteWorker.Name = "btnDeleteWorker";
             this.btnDeleteWorker.Size = new System.Drawing.Size(75, 28);
@@ -105,7 +106,7 @@
             // 
             this.lblWorkersCount.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.lblWorkersCount.AutoSize = true;
-            this.lblWorkersCount.Location = new System.Drawing.Point(173, 537);
+            this.lblWorkersCount.Location = new System.Drawing.Point(173, 587);
             this.lblWorkersCount.Name = "lblWorkersCount";
             this.lblWorkersCount.Size = new System.Drawing.Size(111, 17);
             this.lblWorkersCount.TabIndex = 8;
@@ -113,8 +114,9 @@
             // 
             // linkEndpoint
             // 
+            this.linkEndpoint.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.linkEndpoint.AutoSize = true;
-            this.linkEndpoint.Location = new System.Drawing.Point(293, 537);
+            this.linkEndpoint.Location = new System.Drawing.Point(291, 587);
             this.linkEndpoint.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.linkEndpoint.Name = "linkEndpoint";
             this.linkEndpoint.Size = new System.Drawing.Size(146, 17);
@@ -125,7 +127,7 @@
             // btnSettings
             // 
             this.btnSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSettings.Location = new System.Drawing.Point(685, 530);
+            this.btnSettings.Location = new System.Drawing.Point(685, 581);
             this.btnSettings.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnSettings.Name = "btnSettings";
             this.btnSettings.Size = new System.Drawing.Size(86, 28);
@@ -134,11 +136,23 @@
             this.btnSettings.UseVisualStyleBackColor = true;
             this.btnSettings.Click += new System.EventHandler(this.btnSettings_Click);
             // 
+            // cbSpawner
+            // 
+            this.cbSpawner.AutoSize = true;
+            this.cbSpawner.Location = new System.Drawing.Point(50, 12);
+            this.cbSpawner.Name = "cbSpawner";
+            this.cbSpawner.Size = new System.Drawing.Size(118, 21);
+            this.cbSpawner.TabIndex = 11;
+            this.cbSpawner.Text = "Vray Spawner";
+            this.cbSpawner.UseVisualStyleBackColor = true;
+            this.cbSpawner.CheckedChanged += new System.EventHandler(this.cbSpawner_CheckedChanged);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(864, 570);
+            this.ClientSize = new System.Drawing.Size(864, 622);
+            this.Controls.Add(this.cbSpawner);
             this.Controls.Add(this.btnSettings);
             this.Controls.Add(this.linkEndpoint);
             this.Controls.Add(this.lblWorkersCount);
@@ -168,6 +182,7 @@
         private System.Windows.Forms.Label lblWorkersCount;
         private System.Windows.Forms.LinkLabel linkEndpoint;
         private System.Windows.Forms.Button btnSettings;
+        private System.Windows.Forms.CheckBox cbSpawner;
     }
 }
 
