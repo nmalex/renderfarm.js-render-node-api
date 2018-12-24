@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -226,6 +229,38 @@ namespace WorkerManager
             {
                 selectedWorker.BringToFront();
                 this.TopMost = true;
+            }
+        }
+
+        private void btnSettings_Click(object sender, EventArgs e)
+        {
+            var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            if (dir == null) return;
+
+            var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            var filename = config.FilePath;
+            var lastWriteTimeBefore = File.GetLastWriteTime(filename);
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "notepad.exe",
+                Arguments = filename,
+                WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System)
+            };
+            var process = Process.Start(startInfo);
+            if (process != null)
+            {
+                process.EnableRaisingEvents = true;
+                process.Exited += (o, args) =>
+                {
+                    var lastWriteTimeAfter = File.GetLastWriteTime(filename);
+                    if (DateTime.Equals(lastWriteTimeAfter, lastWriteTimeBefore))
+                    {
+                        //user did not save file
+                        return;
+                    }
+                };
+
+                //todo: now reload settings
             }
         }
     }

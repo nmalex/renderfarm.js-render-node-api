@@ -37,6 +37,7 @@
             this.btnDeleteWorker = new System.Windows.Forms.Button();
             this.lblWorkersCount = new System.Windows.Forms.Label();
             this.linkEndpoint = new System.Windows.Forms.LinkLabel();
+            this.btnSettings = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // notifyIcon1
@@ -51,10 +52,10 @@
             // btnExitApp
             // 
             this.btnExitApp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnExitApp.Location = new System.Drawing.Point(583, 431);
-            this.btnExitApp.Margin = new System.Windows.Forms.Padding(2);
+            this.btnExitApp.Location = new System.Drawing.Point(777, 530);
+            this.btnExitApp.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnExitApp.Name = "btnExitApp";
-            this.btnExitApp.Size = new System.Drawing.Size(56, 23);
+            this.btnExitApp.Size = new System.Drawing.Size(75, 28);
             this.btnExitApp.TabIndex = 0;
             this.btnExitApp.Text = "Exit";
             this.btnExitApp.UseVisualStyleBackColor = true;
@@ -66,10 +67,10 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.listView1.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.listView1.Location = new System.Drawing.Point(9, 6);
-            this.listView1.Margin = new System.Windows.Forms.Padding(2);
+            this.listView1.Location = new System.Drawing.Point(12, 7);
+            this.listView1.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.listView1.Name = "listView1";
-            this.listView1.Size = new System.Drawing.Size(631, 407);
+            this.listView1.Size = new System.Drawing.Size(840, 500);
             this.listView1.TabIndex = 2;
             this.listView1.UseCompatibleStateImageBehavior = false;
             this.listView1.ItemSelectionChanged += new System.Windows.Forms.ListViewItemSelectionChangedEventHandler(this.listView1_ItemSelectionChanged);
@@ -78,10 +79,10 @@
             // btnAddWorker
             // 
             this.btnAddWorker.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnAddWorker.Location = new System.Drawing.Point(9, 430);
-            this.btnAddWorker.Margin = new System.Windows.Forms.Padding(2);
+            this.btnAddWorker.Location = new System.Drawing.Point(12, 529);
+            this.btnAddWorker.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnAddWorker.Name = "btnAddWorker";
-            this.btnAddWorker.Size = new System.Drawing.Size(56, 23);
+            this.btnAddWorker.Size = new System.Drawing.Size(75, 28);
             this.btnAddWorker.TabIndex = 3;
             this.btnAddWorker.Text = "Add";
             this.btnAddWorker.UseVisualStyleBackColor = true;
@@ -91,10 +92,10 @@
             // 
             this.btnDeleteWorker.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnDeleteWorker.Enabled = false;
-            this.btnDeleteWorker.Location = new System.Drawing.Point(70, 430);
-            this.btnDeleteWorker.Margin = new System.Windows.Forms.Padding(2);
+            this.btnDeleteWorker.Location = new System.Drawing.Point(93, 529);
+            this.btnDeleteWorker.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnDeleteWorker.Name = "btnDeleteWorker";
-            this.btnDeleteWorker.Size = new System.Drawing.Size(56, 23);
+            this.btnDeleteWorker.Size = new System.Drawing.Size(75, 28);
             this.btnDeleteWorker.TabIndex = 4;
             this.btnDeleteWorker.Text = "Delete";
             this.btnDeleteWorker.UseVisualStyleBackColor = true;
@@ -104,28 +105,41 @@
             // 
             this.lblWorkersCount.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.lblWorkersCount.AutoSize = true;
-            this.lblWorkersCount.Location = new System.Drawing.Point(130, 436);
-            this.lblWorkersCount.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.lblWorkersCount.Location = new System.Drawing.Point(173, 537);
             this.lblWorkersCount.Name = "lblWorkersCount";
-            this.lblWorkersCount.Size = new System.Drawing.Size(85, 13);
+            this.lblWorkersCount.Size = new System.Drawing.Size(111, 17);
             this.lblWorkersCount.TabIndex = 8;
             this.lblWorkersCount.Text = "Worker Count: 0";
             // 
             // linkEndpoint
             // 
             this.linkEndpoint.AutoSize = true;
-            this.linkEndpoint.Location = new System.Drawing.Point(220, 436);
+            this.linkEndpoint.Location = new System.Drawing.Point(293, 537);
+            this.linkEndpoint.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.linkEndpoint.Name = "linkEndpoint";
-            this.linkEndpoint.Size = new System.Drawing.Size(117, 13);
+            this.linkEndpoint.Size = new System.Drawing.Size(146, 17);
             this.linkEndpoint.TabIndex = 9;
             this.linkEndpoint.TabStop = true;
             this.linkEndpoint.Text = "http://localhost/worker";
             // 
+            // btnSettings
+            // 
+            this.btnSettings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnSettings.Location = new System.Drawing.Point(685, 530);
+            this.btnSettings.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.btnSettings.Name = "btnSettings";
+            this.btnSettings.Size = new System.Drawing.Size(86, 28);
+            this.btnSettings.TabIndex = 10;
+            this.btnSettings.Text = "Settings…";
+            this.btnSettings.UseVisualStyleBackColor = true;
+            this.btnSettings.Click += new System.EventHandler(this.btnSettings_Click);
+            // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(648, 463);
+            this.ClientSize = new System.Drawing.Size(864, 570);
+            this.Controls.Add(this.btnSettings);
             this.Controls.Add(this.linkEndpoint);
             this.Controls.Add(this.lblWorkersCount);
             this.Controls.Add(this.btnDeleteWorker);
@@ -133,7 +147,7 @@
             this.Controls.Add(this.listView1);
             this.Controls.Add(this.btnExitApp);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(2);
+            this.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.Name = "Form1";
             this.Text = "RFarm Worker Manager";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
@@ -153,6 +167,7 @@
         private System.Windows.Forms.Button btnDeleteWorker;
         private System.Windows.Forms.Label lblWorkersCount;
         private System.Windows.Forms.LinkLabel linkEndpoint;
+        private System.Windows.Forms.Button btnSettings;
     }
 }
 
