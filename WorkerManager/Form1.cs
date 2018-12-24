@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -37,6 +38,16 @@ namespace WorkerManager
 
         public Form1()
         {
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                var exc = (Exception) args.ExceptionObject;
+                var sb = new StringBuilder();
+                sb.AppendLine(exc.Message);
+                sb.AppendLine(exc.StackTrace);
+
+                File.WriteAllText("C:\\Temp\\WorkerManager.log", sb.ToString());
+            };
+
             InitializeComponent();
             SetProcessPrio(ProcessPriorityClass.High);
 
@@ -400,8 +411,9 @@ namespace WorkerManager
             {
                 if (this.spawnerProcess != null)
                 {
+                    this.spawnerProcess.EnableRaisingEvents = false;
                     this.spawnerProcess.Exited -= OnSpawnerExit;
-                    this.spawnerProcess.Kill();
+                    KillProcessAndChildren(this.spawnerProcess.Id);
                     this.spawnerProcess = null;
                 }
             }
@@ -427,6 +439,30 @@ namespace WorkerManager
             this.spawnerProcess.Exited -= OnSpawnerExit;
             Thread.Sleep(1000);
             StartVraySpawner();
+        }
+
+        private static void KillProcessAndChildren(int pid)
+        {
+            // Cannot close 'system idle process'.
+            if (pid == 0)
+            {
+                return;
+            }
+            var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid);
+            var moc = searcher.Get();
+            foreach (var mo in moc)
+            {
+                KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
+            }
+            try
+            {
+                Process proc = Process.GetProcessById(pid);
+                proc.Kill();
+            }
+            catch (ArgumentException)
+            {
+                // Process already exited.
+            }
         }
     }
 }
