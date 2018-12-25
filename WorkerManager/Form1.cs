@@ -34,12 +34,13 @@ namespace WorkerManager
         private readonly System.Threading.Timer heartbeatTimer;
         private readonly string controllerHost;
         private IPAddress localIp;
+        private string localMac;
         private Socket heartbeatSocket;
         private IPEndPoint heartbeatEndpoint;
         private static int HeartbeatI;
         private readonly PerformanceCounter totalCpuCounter;
-        private readonly PerformanceCounter totalRamCounter;
-        private float physicalRam;
+        private readonly float physicalRam;
+        private readonly string currentVersion;
 
         public Form1()
         {
@@ -57,6 +58,7 @@ namespace WorkerManager
             SetProcessPrio(ProcessPriorityClass.High);
 
             this.config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            this.currentVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
             var managementPort = int.Parse(this.config.AppSettings.Settings["management_port"].Value);
 
@@ -82,8 +84,6 @@ namespace WorkerManager
             this.cbSpawner.Checked = this.config.SafeGet("run_spawner", false);
 
             this.totalCpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-            this.totalRamCounter = new PerformanceCounter("Memory", "Available MBytes");
-            this.physicalRam = GetPhysicalRamInstalled();
 
             this.controllerHost = this.config.AppSettings.Settings["controller_host"].Value;
             this.heartbeatTimer = new System.Threading.Timer(SendHeartbeat, null, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(1));
@@ -92,14 +92,18 @@ namespace WorkerManager
             this.ShowWindow();
         }
 
-        private float GetPhysicalRamInstalled()
+        static readonly Func<float, float> ToGb = val => val / 1024.0f / 1024.0f / 1024.0f;
+        private void GetPhysicalRamInstalled(out float usedRam, out float totalRam)
         {
+            usedRam = 0;
+            totalRam = 0;
+
             var memStatus = new MEMORYSTATUSEX();
             if (GlobalMemoryStatusEx(memStatus))
             {
-                return memStatus.ullTotalPhys / 1024.0f / 1024 / 1024;
+                totalRam = ToGb(memStatus.ullTotalPhys);
+                usedRam = ToGb(memStatus.ullTotalPhys - memStatus.ullAvailPhys);
             }
-            return int.MaxValue;
         }
 
         private void InitializeHeartbeat()
@@ -116,19 +120,13 @@ namespace WorkerManager
 
         private void UpdateNetworkAddress()
         {
-            this.localIp = NetworkInterface.GetAllNetworkInterfaces()
-                .Where(n => n.OperationalStatus == OperationalStatus.Up
+            var networkInterface = NetworkInterface.GetAllNetworkInterfaces()
+                .FirstOrDefault(n => n.OperationalStatus == OperationalStatus.Up
                             && n.NetworkInterfaceType != NetworkInterfaceType.Loopback
-                            &&
-                            n.GetIPProperties()
-                                .UnicastAddresses.Any(a => a.Address.AddressFamily == AddressFamily.InterNetwork))
-                .Select(
-                    m =>
-                        m.GetIPProperties()
-                            .UnicastAddresses.FirstOrDefault(
-                                a2 => a2.Address.AddressFamily == AddressFamily.InterNetwork))
-                .Select(u => u.Address)
-                .FirstOrDefault();
+                            && n.GetIPProperties().UnicastAddresses.Any(a => a.Address.AddressFamily == AddressFamily.InterNetwork));
+
+            this.localIp = networkInterface?.GetIPProperties()?.UnicastAddresses?.FirstOrDefault()?.Address;
+            this.localMac = networkInterface?.GetPhysicalAddress().ToString().ToLower();
         }
 
         private void OnNetworkAddressChanged(object sender, EventArgs e)
@@ -144,10 +142,13 @@ namespace WorkerManager
                 this.InitializeHeartbeat();
             }
 
+            float usedRam;
+            float totalRam;
+            GetPhysicalRamInstalled(out usedRam, out totalRam);
+
             var runningVraySpawner = this.spawnerProcess != null && !this.spawnerProcess.HasExited;
-            var cpuUsage = this.totalCpuCounter.NextValue().ToString("F3");
-            var ramUsage = (this.totalRamCounter.NextValue()/1024.0f/1024/1024).ToString("F3");
-            var message = $"{{\"id\":{++HeartbeatI}, \"type\":\"heartbeat\", \"sender\":\"worker-manager\", \"ip\":\"{this.localIp}\", \"vray_spawner\":{runningVraySpawner.ToString().ToLower()}, \"worker_count\":{this.workersManager.Count}, \"cpu_usage\":{cpuUsage}, \"ram_usage\":{ramUsage}, \"total_ram\":{this.physicalRam.ToString("F3")}}}";
+            var cpuUsage = this.totalCpuCounter.NextValue().ToString("0.000");
+            var message = $"{{\"id\":{++HeartbeatI}, \"type\":\"heartbeat\", \"sender\":\"worker-manager\", \"version\":\"{this.currentVersion}\", \"ip\":\"{this.localIp}\", \"mac\":\"{this.localMac}\", \"vray_spawner\":{runningVraySpawner.ToString().ToLower()}, \"worker_count\":{this.workersManager.Count}, \"cpu_usage\":{cpuUsage}, \"ram_usage\":{usedRam.ToString("0.000")}, \"total_ram\":{totalRam.ToString("0.000")}}}";
             var sendBuffer = Encoding.ASCII.GetBytes(message);
             this.heartbeatSocket.SendTo(sendBuffer, this.heartbeatEndpoint);
         }
@@ -253,7 +254,7 @@ namespace WorkerManager
             if (!this.tooltipShown)
             {
                 this.tooltipShown = true;
-                this.notifyIcon1.ShowBalloonTip(3000);
+                this.notifyIcon1.ShowBalloonTip(3000); //todo: extract to App.config
             }
         }
 
@@ -319,7 +320,7 @@ namespace WorkerManager
             if (this.spawnerProcess != null)
             {
                 this.spawnerProcess.Exited -= OnSpawnerExit;
-                this.spawnerProcess.Kill();
+                KillProcessAndChildren(this.spawnerProcess.Id);
                 this.spawnerProcess = null;
             }
 
@@ -464,26 +465,18 @@ namespace WorkerManager
 
         private static void KillProcessAndChildren(int pid)
         {
-            // Cannot close 'system idle process'.
-            if (pid == 0)
+            var taskkill = new Process
             {
-                return;
-            }
-            var searcher = new ManagementObjectSearcher("Select * From Win32_Process Where ParentProcessID=" + pid);
-            var moc = searcher.Get();
-            foreach (var mo in moc)
-            {
-                KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
-            }
-            try
-            {
-                Process proc = Process.GetProcessById(pid);
-                proc.Kill();
-            }
-            catch (ArgumentException)
-            {
-                // Process already exited.
-            }
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "taskkill.exe",
+                    WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System),
+                    Arguments = $"/PID {pid} /T /F",
+                    WindowStyle = ProcessWindowStyle.Minimized
+                }
+            };
+            taskkill.Start();
+            taskkill.WaitForExit();
         }
 
 #pragma warning disable 169
