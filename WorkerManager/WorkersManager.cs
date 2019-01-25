@@ -125,7 +125,7 @@ namespace WorkerManager
             {
                 do
                 {
-                    var randomPort = (int)Math.Floor(20000 + 40000 * Rnd.NextDouble());
+                    var randomPort = (int)Math.Floor(50000 + 10000 * Rnd.NextDouble());
                     var ip = GetLocalIp();
                     worker = new Worker(ip, randomPort, this.controllerHost, this.exeFile, this.workDir, this.unresponsiveTimeout);
                 } while (this.workers.ContainsKey(worker.Port));
