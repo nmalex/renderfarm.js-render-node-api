@@ -30,6 +30,7 @@
       <ComponentGroupRef Id="ProductComponents" />
       <ComponentRef Id="RegistryEntries" />
       <ComponentRef Id="ApplicationShortcutDesktop" />
+      <ComponentRef Id="WorkerManager.plugins" />
     </Feature>
 
     <CustomAction Id="NoDowngrade" Error="A newer version of [ProductName] is already installed." />
@@ -80,6 +81,7 @@
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="ManufacturerDir" Name="$(var.Manufacturer)">
           <Directory Id="INSTALLFOLDER" Name="$(var.ProductName)">
+            <Directory Id="plugins" Name="plugins"></Directory>
           </Directory>
         </Directory>
       </Directory>
@@ -121,6 +123,12 @@
         <firewall:FirewallException Id="Allow.Rayys.WorkerManager.Service.Tcp" Name="Rayys Worker Manager" Description="Allow Inbound Tcp Connections" IgnoreFailure="no" Profile="all" Protocol="tcp" Scope="any" Port="17900" ></firewall:FirewallException>
       </Component>
     </ComponentGroup>
+
+    <Component Id="WorkerManager.plugins" Guid="3182f279-bd44-41b4-8f97-f1c3b3c91099" Directory="plugins">
+      <File Id="cmdex.dlx" Name="cmdex.dlx" Source="$(var.SolutionDir)plugins\cmdex.dlx" />
+      <File Id="threejs.dlx" Name="threejs.dlx" Source="$(var.SolutionDir)plugins\threejs.dlx" />
+      <File Id="remote.maxscript.dlx" Name="remote-maxscript.dlx" Source="$(var.SolutionDir)plugins\remote-maxscript.dlx" />
+    </Component>
 
     <Component Id="ApplicationShortcutDesktop" Guid="*" Directory="DesktopFolder">
       <Shortcut Id="ApplicationDesktopShortcut"
