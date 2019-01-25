@@ -45,3 +45,7 @@ x86/
 
 output/
 packages/
+
+!cmdex.dlx
+!remote-maxscript.dlx
+!threejs.dlx
