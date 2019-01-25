@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -12,6 +13,14 @@ namespace WorkerManager
         [STAThread]
         static void Main(string[] args)
         {
+            AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) =>
+            {
+                var exc = (Exception) eventArgs.ExceptionObject;
+                Directory.CreateDirectory("C:\\log");
+                File.AppendAllLines("C:\\log\\WorkerManager.error.log", new[] {exc.Message});
+                File.AppendAllLines("C:\\log\\WorkerManager.error.log", new[] {exc.StackTrace});
+            };
+
             if (args.Length == 1 && args[0] == "/restart")
             {
                 StartApp();

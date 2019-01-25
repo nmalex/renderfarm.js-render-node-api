@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Windows.Forms;
 
 namespace WorkerManager
 {
@@ -19,7 +21,7 @@ namespace WorkerManager
 
         static readonly Random Rnd = new Random();
 
-        private readonly string controllerHost;
+        private readonly IPAddress controllerHost;
         private readonly object sync = new object();
 
         public event EventHandler<IWorker> Added;
@@ -54,7 +56,18 @@ namespace WorkerManager
 
             this.workDir = this.config.AppSettings.Settings["work_dir"].Value;
             this.exeFile = this.config.AppSettings.Settings["exe_file"].Value;
-            this.controllerHost = this.config.AppSettings.Settings["controller_host"].Value;
+
+            var controllerHostValue = this.config.AppSettings.Settings["controller_host"].Value;
+            if (!IPAddress.TryParse(controllerHostValue, out this.controllerHost))
+            {
+                var hostEntry = Dns.GetHostEntry(controllerHostValue);
+                this.controllerHost = hostEntry.AddressList.FirstOrDefault();
+                if (this.controllerHost == null)
+                {
+                    MessageBox.Show("Error", "Can't resolve DNS name: " + controllerHostValue, MessageBoxButtons.OK);
+                    Application.Exit();
+                }
+            }
 
             this.unresponsiveTimeout = TimeSpan.FromSeconds(int.Parse(this.config.AppSettings.Settings["unresponsive_timeout"].Value));
         }
@@ -127,7 +140,7 @@ namespace WorkerManager
                 {
                     var randomPort = (int)Math.Floor(50000 + 10000 * Rnd.NextDouble());
                     var ip = GetLocalIp();
-                    worker = new Worker(ip, randomPort, this.controllerHost, this.exeFile, this.workDir, this.unresponsiveTimeout);
+                    worker = new Worker(ip, randomPort, this.controllerHost.ToString(), this.exeFile, this.workDir, this.unresponsiveTimeout);
                 } while (this.workers.ContainsKey(worker.Port));
             }
 

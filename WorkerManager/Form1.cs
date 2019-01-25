@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Management;
@@ -32,7 +33,7 @@ namespace WorkerManager
         private readonly Configuration config;
         private Process spawnerProcess;
         private readonly System.Threading.Timer heartbeatTimer;
-        private readonly string controllerHost;
+        private readonly IPAddress controllerHost;
         private IPAddress localIp;
         private string localMac;
         private Socket heartbeatSocket;
@@ -85,7 +86,19 @@ namespace WorkerManager
 
             this.totalCpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
 
-            this.controllerHost = this.config.AppSettings.Settings["controller_host"].Value;
+            var controllerHostValue = this.config.AppSettings.Settings["controller_host"].Value;
+            if (!IPAddress.TryParse(controllerHostValue, out this.controllerHost))
+            {
+                var hostEntry = Dns.GetHostEntry(controllerHostValue);
+                this.controllerHost = hostEntry.AddressList.FirstOrDefault();
+                if (this.controllerHost == null)
+                {
+                    MessageBox.Show("Error", "Can't resolve DNS name: " + controllerHostValue, MessageBoxButtons.OK);
+                    Application.Exit();
+                }
+            }
+
+
             this.heartbeatTimer = new System.Threading.Timer(SendHeartbeat, null, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(1));
             NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
 
@@ -110,10 +123,8 @@ namespace WorkerManager
         {
             this.heartbeatSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
-            var receiverAddr = IPAddress.Parse(this.controllerHost);
             var heartbeatPort = int.Parse(this.config.AppSettings.Settings["heartbeat_port"].Value);
-
-            this.heartbeatEndpoint = new IPEndPoint(receiverAddr, heartbeatPort);
+            this.heartbeatEndpoint = new IPEndPoint(this.controllerHost, heartbeatPort);
 
             this.UpdateNetworkAddress();
         }
@@ -147,8 +158,8 @@ namespace WorkerManager
             GetPhysicalRamInstalled(out usedRam, out totalRam);
 
             var runningVraySpawner = this.spawnerProcess != null && !this.spawnerProcess.HasExited;
-            var cpuUsage = this.totalCpuCounter.NextValue().ToString("0.000");
-            var message = $"{{\"id\":{++HeartbeatI}, \"type\":\"heartbeat\", \"sender\":\"worker-manager\", \"version\":\"{this.currentVersion}\", \"ip\":\"{this.localIp}\", \"mac\":\"{this.localMac}\", \"vray_spawner\":{runningVraySpawner.ToString().ToLower()}, \"worker_count\":{this.workersManager.Count}, \"cpu_usage\":{cpuUsage}, \"ram_usage\":{usedRam.ToString("0.000")}, \"total_ram\":{totalRam.ToString("0.000")}}}";
+            var cpuUsage = this.totalCpuCounter.NextValue().ToString("0.000", CultureInfo.InvariantCulture);
+            var message = $"{{\"id\":{++HeartbeatI}, \"type\":\"heartbeat\", \"sender\":\"worker-manager\", \"version\":\"{this.currentVersion}\", \"ip\":\"{this.localIp}\", \"mac\":\"{this.localMac}\", \"vray_spawner\":{runningVraySpawner.ToString().ToLower()}, \"worker_count\":{this.workersManager.Count}, \"cpu_usage\":{cpuUsage}, \"ram_usage\":{usedRam.ToString("0.000", CultureInfo.InvariantCulture)}, \"total_ram\":{totalRam.ToString("0.000", CultureInfo.InvariantCulture)}}}";
             var sendBuffer = Encoding.ASCII.GetBytes(message);
             this.heartbeatSocket.SendTo(sendBuffer, this.heartbeatEndpoint);
         }

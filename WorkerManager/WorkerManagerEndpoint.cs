@@ -45,7 +45,7 @@ namespace WorkerManager
         {
             var settings = new WebListenerSettings();
             var urlPrefix = $"http://*:{this.port}/";
-            File.WriteAllText("C:\\Temp\\UrlPrefixes.txt", urlPrefix);
+            // File.WriteAllText("C:\\Temp\\UrlPrefixes.txt", urlPrefix);
             settings.UrlPrefixes.Add(urlPrefix);
 
             this.listener = new WebListener(settings);
