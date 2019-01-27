@@ -23,6 +23,8 @@ namespace WorkerManager
 
         private readonly IPAddress controllerHost;
         private readonly object sync = new object();
+        private readonly int workerPortFrom;
+        private readonly int wokerPortTo;
 
         public event EventHandler<IWorker> Added;
         public event EventHandler<IWorker> Deleted;
@@ -68,6 +70,11 @@ namespace WorkerManager
                     Application.Exit();
                 }
             }
+            
+            var workerPortRange = this.config.AppSettings.Settings["worker_port_range"].Value;
+            var parts = workerPortRange.Split(new[] {'-'}, StringSplitOptions.RemoveEmptyEntries);
+            this.workerPortFrom = int.Parse(parts[0]);
+            this.wokerPortTo = int.Parse(parts[1]);
 
             this.unresponsiveTimeout = TimeSpan.FromSeconds(int.Parse(this.config.AppSettings.Settings["unresponsive_timeout"].Value));
         }
@@ -138,7 +145,8 @@ namespace WorkerManager
             {
                 do
                 {
-                    var randomPort = (int)Math.Floor(50000 + 10000 * Rnd.NextDouble());
+                    var portRange = this.wokerPortTo - this.workerPortFrom;
+                    var randomPort = (int)Math.Floor(this.workerPortFrom + portRange * Rnd.NextDouble());
                     var ip = GetLocalIp();
                     worker = new Worker(ip, randomPort, this.controllerHost.ToString(), this.exeFile, this.workDir, this.unresponsiveTimeout);
                 } while (this.workers.ContainsKey(worker.Port));
