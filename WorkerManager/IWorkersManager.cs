@@ -17,5 +17,6 @@ namespace WorkerManager
         void Close();
         bool DeleteWorker(int port);
         bool KillWorker(int port);
+        void RestartAll();
     }
 }

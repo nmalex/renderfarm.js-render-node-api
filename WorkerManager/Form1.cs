@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Management;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -30,7 +28,7 @@ namespace WorkerManager
         private readonly Thread thread1;
         private bool thread1Running = true;
         private readonly WorkerManagerEndpoint endpoint;
-        private readonly Configuration config;
+        // private readonly Configuration config;
         private Process spawnerProcess;
         private readonly System.Threading.Timer heartbeatTimer;
         private readonly IPAddress controllerHost;
@@ -40,8 +38,11 @@ namespace WorkerManager
         private IPEndPoint heartbeatEndpoint;
         private static int HeartbeatI;
         private readonly PerformanceCounter totalCpuCounter;
-        private readonly float physicalRam;
+        // private readonly float physicalRam;
         private readonly string currentVersion;
+
+        static readonly Func<float, float> ToGb = val => val / 1024.0f / 1024.0f / 1024.0f;
+        private readonly Settings settings;
 
         public Form1()
         {
@@ -58,35 +59,49 @@ namespace WorkerManager
             InitializeComponent();
             SetProcessPrio(ProcessPriorityClass.High);
 
-            this.config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-            this.currentVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            // ReSharper disable once AssignNullToNotNullAttribute
+            this.settings = new Settings(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "settings.json"));
+            this.settings.Load();
 
-            var managementPort = int.Parse(this.config.AppSettings.Settings["management_port"].Value);
+            this.currentVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
             this.thread1 = new Thread(ThreadStart1);
             this.thread1.Start(null);
 
-            this.workersManager = new WorkersManager(config);
+            this.workersManager = new WorkersManager(this.settings);
             this.workersManager.Added += OnWorkerAdded;
             this.workersManager.Updated += OnWorkerUpdated;
             this.workersManager.Deleted += OnWorkerDeleted;
             this.workersManager.Load();
 
             this.endpoint = new WorkerManagerEndpoint(this.workersManager);
-            this.endpoint.Listen(managementPort);
 
-            var endpointUrl = $"http://localhost:{managementPort}/worker";
+            var ip = (string) this.settings["listen_ip"];
+            var port = (long) this.settings["listen_port"];
+            this.endpoint.Listen(ip, (int)port);
+
+            var endpointUrl = $"http://localhost:{port}/worker";
             this.linkEndpoint.Text = endpointUrl;
             this.linkEndpoint.LinkClicked += (sender, args) =>
             {
                 Process.Start("explorer.exe", $"\"{endpointUrl}\"");
             };
 
-            this.cbSpawner.Checked = this.config.SafeGet("run_spawner", false);
+            this.cbSpawner.Checked = (bool) this.settings["run_spawner"];
+
+            // ReSharper disable once CoVariantArrayConversion
+            this.comboBox1.Items.AddRange(this.settings["available_controllers"].Values<string>().ToArray());
+            this.comboBox1.SelectedItem = (string)this.settings["controller_host"];
+            this.comboBox1.SelectedValueChanged += (sender, args) =>
+            {
+                this.settings["controller_host"] = this.comboBox1.SelectedItem.ToString();
+                this.settings.Save();
+                this.workersManager.RestartAll();
+            };
 
             this.totalCpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
 
-            var controllerHostValue = this.config.AppSettings.Settings["controller_host"].Value;
+            var controllerHostValue = (string)this.settings["controller_host"];
             if (!IPAddress.TryParse(controllerHostValue, out this.controllerHost))
             {
                 var hostEntry = Dns.GetHostEntry(controllerHostValue);
@@ -105,7 +120,6 @@ namespace WorkerManager
             this.ShowWindow();
         }
 
-        static readonly Func<float, float> ToGb = val => val / 1024.0f / 1024.0f / 1024.0f;
         private void GetPhysicalRamInstalled(out float usedRam, out float totalRam)
         {
             usedRam = 0;
@@ -123,8 +137,8 @@ namespace WorkerManager
         {
             this.heartbeatSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
-            var heartbeatPort = int.Parse(this.config.AppSettings.Settings["heartbeat_port"].Value);
-            this.heartbeatEndpoint = new IPEndPoint(this.controllerHost, heartbeatPort);
+            var heartbeatPort = (long)this.settings["controller_port"];
+            this.heartbeatEndpoint = new IPEndPoint(this.controllerHost, (int)heartbeatPort);
 
             this.UpdateNetworkAddress();
         }
@@ -388,11 +402,11 @@ namespace WorkerManager
             var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             if (dir == null) return;
 
-            var lastWriteTimeBefore = File.GetLastWriteTime(config.FilePath);
+            var lastWriteTimeBefore = File.GetLastWriteTime(this.settings.FilePath);
             var startInfo = new ProcessStartInfo
             {
                 FileName = "notepad.exe",
-                Arguments = config.FilePath,
+                Arguments = this.settings.FilePath,
                 WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System)
             };
             var process = Process.Start(startInfo);
@@ -408,7 +422,7 @@ namespace WorkerManager
 
         private void CheckAppConfigChange(DateTime lastWriteTimeBefore)
         {
-            var lastWriteTimeAfter = File.GetLastWriteTime(config.FilePath);
+            var lastWriteTimeAfter = File.GetLastWriteTime(this.settings.FilePath);
             if (DateTime.Equals(lastWriteTimeAfter, lastWriteTimeBefore))
             {
                 //user did not save file
@@ -433,8 +447,8 @@ namespace WorkerManager
 
         private void cbSpawner_CheckedChanged(object sender, EventArgs e)
         {
-            config.AppSettings.Settings["run_spawner"].Value = this.cbSpawner.Checked.ToString();
-            config.Save(ConfigurationSaveMode.Modified);
+            this.settings["run_spawner"] = this.cbSpawner.Checked;
+            this.settings.Save();
 
             if (this.cbSpawner.Checked)
             {
@@ -458,8 +472,8 @@ namespace WorkerManager
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = config.AppSettings.Settings["spawner_exe"].Value,
-                    WorkingDirectory = config.AppSettings.Settings["work_dir"].Value
+                    FileName = (string)this.settings["vrayspawner_exe"],
+                    WorkingDirectory = (string)this.settings["3dsmax_dir"]
                 },
                 EnableRaisingEvents = true
             };
@@ -491,6 +505,7 @@ namespace WorkerManager
         }
 
 #pragma warning disable 169
+#pragma warning disable 649
         // ReSharper disable ClassNeverInstantiated.Local
         // ReSharper disable InconsistentNaming
         // ReSharper disable MemberCanBePrivate.Local

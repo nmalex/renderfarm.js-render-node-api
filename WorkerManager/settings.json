@@ -1,0 +1,21 @@
+﻿{
+  "controller_host": "192.168.0.1",
+  "available_controllers": [ "192.168.0.1", "192.168.0.2", "192.168.0.3" ],
+  "controller_port": 3000,
+
+  "listen_ip": "*",
+  "listen_port": 17900,
+
+  "3dsmax_dir": "",
+  "3dsmax_exe": "WorkerManager.3dsmax.exe",
+
+  "kill_unresponside": true,
+  "unresponsive_timeout": 90,
+
+  "run_spawner": false,
+  "vrayspawner_exe": "WorkerManager.3dsmax.exe",
+
+  "worker_count": 0,
+  "worker_port_range_from": 50000,
+  "worker_port_range_width": 1000
+}

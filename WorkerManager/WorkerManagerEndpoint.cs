@@ -12,6 +12,7 @@ namespace WorkerManager
         private readonly IWorkersManager workersManager;
         private bool threadRunning;
         private Thread thread;
+        private string host;
         private int port;
         private WebListener listener;
 
@@ -20,8 +21,9 @@ namespace WorkerManager
             this.workersManager = workersManager;
         }
 
-        public void Listen(int aport)
+        public void Listen(string ahost, int aport)
         {
+            this.host = ahost;
             this.port = aport;
 
             this.threadRunning = true;
@@ -44,7 +46,7 @@ namespace WorkerManager
         private void ListenThread(object obj)
         {
             var settings = new WebListenerSettings();
-            var urlPrefix = $"http://*:{this.port}/";
+            var urlPrefix = $"http://{this.host}:{this.port}/";
             // File.WriteAllText("C:\\Temp\\UrlPrefixes.txt", urlPrefix);
             settings.UrlPrefixes.Add(urlPrefix);
 

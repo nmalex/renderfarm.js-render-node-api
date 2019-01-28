@@ -3,7 +3,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
+using System.Windows.Forms;
+using Timer = System.Threading.Timer;
 
 namespace WorkerManager
 {
@@ -15,28 +18,25 @@ namespace WorkerManager
         private readonly object cpuCounterLock = new object();
         private readonly object ramCounterLock = new object();
 
-        private readonly string controllerHost;
-        private readonly string exeFile;
-        private readonly string workDir;
-        private readonly TimeSpan unresponsiveTimeout;
+        private string maxDirectory;
+        private string maxExe;
+        private TimeSpan unresponsiveTimeout;
+        private IPAddress controllerHost;
 
         private int restartCount;
         private Timer timerProcessCheck;
         private DateTime? processUnresponsiveSince;
         private VrayRenderProgressSniffer renderingProgressSniffer;
+        private readonly Settings settings;
 
         public event EventHandler Restarted;
         public event EventHandler<string> ProgressChanged;
 
-        public Worker(string ip, int port, string controllerHost, string exeFile, string workDir, TimeSpan unresponsiveTimeout)
+        public Worker(string ip, int port, Settings settings)
         {
             this.Ip = ip;
             this.Port = port;
-
-            this.controllerHost = controllerHost;
-            this.exeFile = exeFile;
-            this.workDir = workDir;
-            this.unresponsiveTimeout = unresponsiveTimeout;
+            this.settings = settings;
         }
 
         #region Properties
@@ -131,6 +131,23 @@ namespace WorkerManager
 
         private void Start(bool isRestart)
         {
+            this.maxDirectory = (string)this.settings["3dsmax_dir"];
+            this.maxExe = (string)this.settings["3dsmax_exe"];
+
+            this.unresponsiveTimeout = TimeSpan.FromSeconds((long)this.settings["unresponsive_timeout"]);
+
+            var controllerHostValue = (string)this.settings["controller_host"];
+            if (!IPAddress.TryParse(controllerHostValue, out this.controllerHost))
+            {
+                var hostEntry = Dns.GetHostEntry(controllerHostValue);
+                this.controllerHost = hostEntry.AddressList.FirstOrDefault();
+                if (this.controllerHost == null)
+                {
+                    MessageBox.Show("Error", "Can't resolve DNS name: " + controllerHostValue, MessageBoxButtons.OK);
+                    Application.Exit();
+                }
+            }
+
             //prepare startup.ms file for this worker
             var startupScriptFilename = Path.Combine(Path.GetTempPath(), $"worker_{this.Port}.ms");
             File.WriteAllText(startupScriptFilename, $"threejsApiStart {this.Port} \"{this.controllerHost}\"");
@@ -138,9 +155,9 @@ namespace WorkerManager
             //start worker process with parameters
             //learn more about command line parameters here: 
             //https://knowledge.autodesk.com/support/3ds-max/learn-explore/caas/CloudHelp/cloudhelp/2019/ENU/3DSMax-Basics/files/GUID-1A97CFEC-60A3-4221-B9C3-5C808E2AED35-htm.html
-            var startInfo = new ProcessStartInfo(this.exeFile, $"-ma -dfc -silent -vxs -U MAXScript {startupScriptFilename}")
+            var startInfo = new ProcessStartInfo(this.maxExe, $"-ma -dfc -silent -vxs -U MAXScript {startupScriptFilename}")
             {
-                WorkingDirectory = this.workDir,
+                WorkingDirectory = this.maxDirectory,
                 WindowStyle = ProcessWindowStyle.Minimized
             };
             this.Process = new Process

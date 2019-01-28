@@ -1,30 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Windows.Forms;
 
 namespace WorkerManager
 {
     public class WorkersManager : IWorkersManager
     {
-        private readonly Configuration config;
+        private readonly Settings settings;
         private readonly Dictionary<int, IWorker> workers = new Dictionary<int, IWorker>();
 
-        private readonly string workDir;
-        private readonly string exeFile;
-        private readonly TimeSpan unresponsiveTimeout;
 
         static readonly Random Rnd = new Random();
 
-        private readonly IPAddress controllerHost;
         private readonly object sync = new object();
-        private readonly int workerPortFrom;
-        private readonly int wokerPortTo;
 
         public event EventHandler<IWorker> Added;
         public event EventHandler<IWorker> Deleted;
@@ -52,31 +43,9 @@ namespace WorkerManager
             }
         }
 
-        public WorkersManager(Configuration config)
+        public WorkersManager(Settings settings)
         {
-            this.config = config;
-
-            this.workDir = this.config.AppSettings.Settings["work_dir"].Value;
-            this.exeFile = this.config.AppSettings.Settings["exe_file"].Value;
-
-            var controllerHostValue = this.config.AppSettings.Settings["controller_host"].Value;
-            if (!IPAddress.TryParse(controllerHostValue, out this.controllerHost))
-            {
-                var hostEntry = Dns.GetHostEntry(controllerHostValue);
-                this.controllerHost = hostEntry.AddressList.FirstOrDefault();
-                if (this.controllerHost == null)
-                {
-                    MessageBox.Show("Error", "Can't resolve DNS name: " + controllerHostValue, MessageBoxButtons.OK);
-                    Application.Exit();
-                }
-            }
-            
-            var workerPortRange = this.config.AppSettings.Settings["worker_port_range"].Value;
-            var parts = workerPortRange.Split(new[] {'-'}, StringSplitOptions.RemoveEmptyEntries);
-            this.workerPortFrom = int.Parse(parts[0]);
-            this.wokerPortTo = int.Parse(parts[1]);
-
-            this.unresponsiveTimeout = TimeSpan.FromSeconds(int.Parse(this.config.AppSettings.Settings["unresponsive_timeout"].Value));
+            this.settings = settings;
         }
 
         public IWorker AddWorker()
@@ -129,7 +98,7 @@ namespace WorkerManager
 
         public void Load()
         {
-            var workerCount = this.GetWorkerCountSettings();
+            var workerCount = (long)this.settings["worker_count"];
 
             for (var i = 0; i < workerCount; i++)
             {
@@ -141,14 +110,16 @@ namespace WorkerManager
         {
             Worker worker;
 
+            var workerPortRangeFrom = (long)this.settings["worker_port_range_from"];
+            var wokerPortRangeWidth = (long)this.settings["worker_port_range_width"];
+
             lock (this.sync)
             {
                 do
                 {
-                    var portRange = this.wokerPortTo - this.workerPortFrom;
-                    var randomPort = (int)Math.Floor(this.workerPortFrom + portRange * Rnd.NextDouble());
+                    var randomPort = (int)Math.Floor(workerPortRangeFrom + wokerPortRangeWidth * Rnd.NextDouble());
                     var ip = GetLocalIp();
-                    worker = new Worker(ip, randomPort, this.controllerHost.ToString(), this.exeFile, this.workDir, this.unresponsiveTimeout);
+                    worker = new Worker(ip, randomPort, this.settings);
                 } while (this.workers.ContainsKey(worker.Port));
             }
 
@@ -173,25 +144,10 @@ namespace WorkerManager
                 .ToString();
         }
 
-        private int GetWorkerCountSettings()
-        {
-            int workerCount;
-            if (int.TryParse(this.config.AppSettings.Settings["worker_count"].Value, out workerCount))
-            {
-                return workerCount;
-            }
-            else
-            {
-                this.config.AppSettings.Settings["worker_count"].Value = "0";
-                this.config.Save(ConfigurationSaveMode.Modified);
-                return 0;
-            }
-        }
-
         private void SetWorkerCountSettings(int workerCount)
         {
-            this.config.AppSettings.Settings["worker_count"].Value = workerCount.ToString();
-            this.config.Save(ConfigurationSaveMode.Modified);
+            this.settings["worker_count"] = workerCount;
+            this.settings.Save();
         }
 
         // ReSharper disable once UnusedMember.Local
@@ -255,6 +211,21 @@ namespace WorkerManager
                 }
 
                 return true;
+            }
+        }
+
+        public void RestartAll()
+        {
+            lock (this.sync)
+            {
+                foreach (var w in this.workers)
+                {
+                    if (w.Value.Pid != null)
+                    {
+                        var workerProcess = Process.GetProcessById(w.Value.Pid.Value, Environment.MachineName);
+                        workerProcess.Kill();
+                    }
+                }
             }
         }
     }
