@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Include>
   <?define Manufacturer = "Rayys LLC" ?>
-  <?define ProductName = "Worker Manager" ?>
+  <?define ProductName = "renderfarm.js - Worker Manager" ?>
   <?define ProductVersion = "1.0.0" ?>
   <?define ProductUpgradeCode = "bd215fe3-d082-4dab-8b23-fbd326cbdce2" ?>
 </Include>
