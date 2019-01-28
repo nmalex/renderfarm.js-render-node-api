@@ -99,6 +99,7 @@
       <Component Id="WorkerManager.exe.Component" Guid="3182f279-bd44-41b4-8f97-f1c3b3c910e1">
         <File Id="WorkerManager.exe" Name="WorkerManager.exe" Source="$(var.WorkerManager.TargetDir)WorkerManager.exe" />
         <File Id="WorkerManager.exe.config" Name="WorkerManager.exe.config" Source="$(var.WorkerManager.TargetDir)WorkerManager.exe.config" />
+        <File Id="settings.json" Name="settings.json" Source="$(var.WorkerManager.TargetDir)settings.json" />
 
         <File Id="Microsoft.Extensions.Logging.Abstractions.dll" Name="Microsoft.Extensions.Logging.Abstractions.dll" Source="$(var.WorkerManager.TargetDir)Microsoft.Extensions.Logging.Abstractions.dll" />
         <File Id="Microsoft.Extensions.Logging.Abstractions.xml" Name="Microsoft.Extensions.Logging.Abstractions.xml" Source="$(var.WorkerManager.TargetDir)Microsoft.Extensions.Logging.Abstractions.xml" />
