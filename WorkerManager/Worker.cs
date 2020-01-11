@@ -29,6 +29,8 @@ namespace WorkerManager
         private VrayRenderProgressSniffer renderingProgressSniffer;
         private readonly Settings settings;
 
+        private static readonly Random Random = new Random(DateTime.Now.Millisecond);
+
         public event EventHandler Restarted;
         public event EventHandler<string> ProgressChanged;
 
@@ -49,7 +51,7 @@ namespace WorkerManager
 
         public string VrayProgress { get; private set; }
 
-        public string Label => $"{this.Ip}:{this.Port} ({this.restartCount}) {this.renderingProgressSniffer.ProgressText}";
+        public string Label => $"{this.Ip}:{this.Port} ({this.restartCount}) {(this.renderingProgressSniffer != null ? this.renderingProgressSniffer.ProgressText : "")}";
 
         private Process Process { get; set; }
 
@@ -121,12 +123,22 @@ namespace WorkerManager
 
         public void Start()
         {
-            this.Start(false);
+            var t = new Thread(() =>
+            {
+                Thread.Sleep((int)(15 * 1000 * Random.NextDouble()));
+                this.Start(false);
+            });
+            t.Start();
         }
 
         private void Restart()
         {
-            this.Start(true);
+            var t = new Thread(() =>
+            {
+                Thread.Sleep((int)(15 * 1000 * Random.NextDouble()));
+                this.Start(true);
+            });
+            t.Start();
         }
 
         private void Start(bool isRestart)
@@ -158,12 +170,12 @@ namespace WorkerManager
             var startInfo = new ProcessStartInfo(this.maxExe, $"-ma -dfc -silent -vxs -U MAXScript {startupScriptFilename}")
             {
                 WorkingDirectory = this.maxDirectory,
-                WindowStyle = ProcessWindowStyle.Minimized
+                WindowStyle = ProcessWindowStyle.Minimized,
             };
             this.Process = new Process
             {
                 StartInfo = startInfo,
-                EnableRaisingEvents = true
+                EnableRaisingEvents = true, 
             };
 
             //update UI
@@ -174,7 +186,7 @@ namespace WorkerManager
                 this.Process.Start();
                 this.Process.PriorityClass = ProcessPriorityClass.Idle;
 
-                this.timerProcessCheck = new Timer(OnProcessCheckTimer, null, TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(5));
+                this.timerProcessCheck = new Timer(OnProcessCheckTimer, null, TimeSpan.FromMilliseconds(1000), TimeSpan.FromSeconds(5));
                 this.renderingProgressSniffer = new VrayRenderProgressSniffer(this.Process);
                 this.renderingProgressSniffer.ProgressChanged += OnRenderProgressChanged;
 
@@ -229,9 +241,12 @@ namespace WorkerManager
         {
             if (this.Process != null)
             {
-                this.renderingProgressSniffer.ProgressChanged -= OnRenderProgressChanged;
-                this.renderingProgressSniffer?.Dispose();
-                this.renderingProgressSniffer = null;
+                if (this.renderingProgressSniffer != null)
+                {
+                    this.renderingProgressSniffer.ProgressChanged -= OnRenderProgressChanged;
+                    this.renderingProgressSniffer?.Dispose();
+                    this.renderingProgressSniffer = null;
+                }
 
                 this.timerProcessCheck?.Dispose();
                 this.timerProcessCheck = null;
@@ -291,8 +306,6 @@ namespace WorkerManager
             var process = (Process)sender;
             process.Exited -= OnWorkerStopped;
             process.Dispose();
-
-            Thread.Sleep(1000);
 
             this.Restart();
         }

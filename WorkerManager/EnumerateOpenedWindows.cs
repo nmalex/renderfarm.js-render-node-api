@@ -49,7 +49,10 @@ namespace WorkerManager
 
         private static bool EnumWindowsProc(IntPtr hWnd, int lParam)
         {
-            lstTitles.Add(hWnd);
+            if (hWnd != IntPtr.Zero)
+            {
+                lstTitles.Add(hWnd);
+            }
             return true;
         }
 

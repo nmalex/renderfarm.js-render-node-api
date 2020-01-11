@@ -8,6 +8,8 @@ namespace WorkerManager
     {
         private readonly Process workerProcess;
         private readonly object sync = new object();
+        private readonly Mutex findMutex = new Mutex();
+        private readonly Mutex vrayMutex = new Mutex();
 
         private string progressText;
         private IntPtr progressLabelHwnd;
@@ -40,72 +42,105 @@ namespace WorkerManager
 
         private void StartWatchProgressTimer()
         {
-            this.getRenderProgressTimer = new Timer(TryGetRenderProgress, null, TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(1));
+            this.getRenderProgressTimer = new Timer(TryGetRenderProgress, null, TimeSpan.FromMilliseconds(350), TimeSpan.FromSeconds(1));
         }
 
         private void TryGetRenderProgress(object state)
         {
-            if (EnumerateOpenedWindows.IsWindowVisible(this.progressLabelHwnd))
+            if (!this.vrayMutex.WaitOne(TimeSpan.FromMilliseconds(100)))
             {
-                string changedText = null;
+                return;
+            }
 
-                lock (this.sync)
+            try
+            {
+                if (EnumerateOpenedWindows.IsWindowVisible(this.progressLabelHwnd))
                 {
-                    var text = EnumerateOpenedWindows.GetWindowText(this.progressLabelHwnd);
-                    if (!string.Equals(this.progressText, text))
+                    string changedText = null;
+
+                    lock (this.sync)
                     {
-                        this.progressText = text;
-                        changedText = text;
+                        var text = EnumerateOpenedWindows.GetWindowText(this.progressLabelHwnd);
+                        if (!string.Equals(this.progressText, text))
+                        {
+                            this.progressText = text;
+                            changedText = text;
+                        }
+                    }
+
+                    if (changedText != null)
+                    {
+                        ProgressChanged?.Invoke(this, changedText);
                     }
                 }
-
-                if (changedText != null)
+                else
                 {
-                    ProgressChanged?.Invoke(this, changedText);
+                    this.getRenderProgressTimer?.Dispose();
+                    this.getRenderProgressTimer = null;
+
+                    StartWaitForRenderTimer();
+
+                    this.progressText = string.Empty;
+                    ProgressChanged?.Invoke(this, this.progressText);
                 }
             }
-            else
+            catch (Exception exc)
             {
-                this.getRenderProgressTimer?.Dispose();
-                this.getRenderProgressTimer = null;
-
-                StartWaitForRenderTimer();
-
-                this.progressText = string.Empty;
-                ProgressChanged?.Invoke(this, this.progressText);
+                Trace.TraceError(exc.Message);
+            }
+            finally
+            {
+                this.vrayMutex.ReleaseMutex();
             }
         }
 
         private void TryFindRenderingDialog(object state)
         {
-            var desktopHwnds = EnumerateOpenedWindows.GetDesktopWindows();
-
-            foreach (var hwnd1 in desktopHwnds)
+            if (!this.findMutex.WaitOne(TimeSpan.FromMilliseconds(100)))
             {
-                uint windowProcessId;
-                EnumerateOpenedWindows.GetWindowThreadProcessId(hwnd1, out windowProcessId);
-                if (this.workerProcess.Id != windowProcessId) continue;
+                return;
+            }
 
-                var windowText = EnumerateOpenedWindows.GetWindowText(hwnd1);
-                if (windowText.Contains("Rendering"))
+            try
+            {
+                var desktopHwnds = EnumerateOpenedWindows.GetDesktopWindows();
+
+                foreach (var hwnd1 in desktopHwnds)
                 {
-                    var handles = EnumerateOpenedWindows.GetAllChildrenWindowHandles(hwnd1, long.MaxValue);
-                    foreach (var ctrlHwnd in handles)
+                    uint windowProcessId;
+                    EnumerateOpenedWindows.GetWindowThreadProcessId(hwnd1, out windowProcessId);
+                    if (this.workerProcess.Id != windowProcessId) continue;
+
+                    var windowText = EnumerateOpenedWindows.GetWindowText(hwnd1);
+                    if (windowText.Contains("Rendering"))
                     {
-                        // ReSharper disable once InconsistentNaming
-                        const int GWL_ID = -12;
-                        var controlId = EnumerateOpenedWindows.GetWindowLongPtr(ctrlHwnd, GWL_ID);
-                        if (controlId.ToInt32() == 0x544) // 0x544 corresponds to progressText label near rendering progress
+                        var handles = EnumerateOpenedWindows.GetAllChildrenWindowHandles(hwnd1, long.MaxValue);
+                        foreach (var ctrlHwnd in handles)
                         {
-                            this.progressLabelHwnd = ctrlHwnd;
-                            this.findRenderDialogTimer?.Dispose();
-                            this.findRenderDialogTimer = null;
+                            // ReSharper disable once InconsistentNaming
+                            const int GWL_ID = -12;
+                            var controlId = EnumerateOpenedWindows.GetWindowLongPtr(ctrlHwnd, GWL_ID);
+                            if (controlId.ToInt32() == 0x544)
+                                // 0x544 corresponds to progressText label near rendering progress
+                            {
+                                this.progressLabelHwnd = ctrlHwnd;
+                                this.findRenderDialogTimer?.Dispose();
+                                this.findRenderDialogTimer = null;
 
-                            this.StartWatchProgressTimer();
+                                this.StartWatchProgressTimer();
+                            }
                         }
-                    }
 
+                    }
                 }
+            }
+            catch (Exception exc)
+            {
+                Trace.TraceError(exc.Message);
+            }
+            finally
+            {
+                this.findMutex.ReleaseMutex();
             }
         }
 
