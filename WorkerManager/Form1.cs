@@ -99,6 +99,16 @@ namespace WorkerManager
                 this.workersManager.RestartAll();
             };
 
+            // ReSharper disable once CoVariantArrayConversion
+            this.cbWorkgroup.Items.AddRange(this.settings["available_workgroups"].Values<string>().ToArray());
+            this.cbWorkgroup.SelectedItem = (string)this.settings["workgroup"];
+            this.cbWorkgroup.SelectedValueChanged += (sender, args) =>
+            {
+                this.settings["workgroup"] = this.cbWorkgroup.SelectedItem.ToString();
+                this.settings.Save();
+                this.workersManager.RestartAll();
+            };
+
             this.totalCpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
 
             var controllerHostValue = (string)this.settings["controller_host"];

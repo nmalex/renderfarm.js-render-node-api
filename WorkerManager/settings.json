@@ -1,6 +1,10 @@
 ﻿{
   "controller_host": "192.168.0.1",
   "available_controllers": [ "192.168.0.1", "192.168.0.2", "192.168.0.3" ],
+
+  "workgroup": "default",
+  "available_workgroups": [ "default" ],
+
   "controller_port": 3000,
 
   "listen_ip": "*",

@@ -149,6 +149,7 @@ namespace WorkerManager
             this.unresponsiveTimeout = TimeSpan.FromSeconds((long)this.settings["unresponsive_timeout"]);
 
             var controllerHostValue = (string)this.settings["controller_host"];
+
             if (!IPAddress.TryParse(controllerHostValue, out this.controllerHost))
             {
                 var hostEntry = Dns.GetHostEntry(controllerHostValue);
@@ -161,8 +162,9 @@ namespace WorkerManager
             }
 
             //prepare startup.ms file for this worker
+            var workgroupValue = (string)this.settings["workgroup"];
             var startupScriptFilename = Path.Combine(Path.GetTempPath(), $"worker_{this.Port}.ms");
-            File.WriteAllText(startupScriptFilename, $"threejsApiStart {this.Port} \"{this.controllerHost}\"");
+            File.WriteAllText(startupScriptFilename, $"threejsApiStart {this.Port} \"{this.controllerHost}\" \"{workgroupValue}\"");
 
             //start worker process with parameters
             //learn more about command line parameters here: 
