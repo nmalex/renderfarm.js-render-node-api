@@ -17,11 +17,13 @@ namespace WorkerManager
 
         private readonly object cpuCounterLock = new object();
         private readonly object ramCounterLock = new object();
+        private readonly object vrayProgressLock = new object();
 
         private string maxDirectory;
         private string maxExe;
         private TimeSpan unresponsiveTimeout;
         private IPAddress controllerHost;
+        private int controllerPort;
 
         private int restartCount;
         private Timer timerProcessCheck;
@@ -49,7 +51,24 @@ namespace WorkerManager
 
         public int Port { get; }
 
-        public string VrayProgress { get; private set; }
+        private string vrayProgress;
+        public string VrayProgress
+        {
+            get
+            {
+                lock (this.vrayProgressLock)
+                {
+                    return this.vrayProgress;
+                }
+            }
+            private set
+            {
+                lock (this.vrayProgressLock)
+                {
+                    this.vrayProgress = value;
+                }
+            }
+        }
 
         public string Label => $"{this.Ip}:{this.Port} ({this.restartCount}) {(this.renderingProgressSniffer != null ? this.renderingProgressSniffer.ProgressText : "")}";
 
@@ -105,12 +124,18 @@ namespace WorkerManager
 
         public string GetRamUsage()
         {
-            return this.RamCounter?.NextValue().ToString(CultureInfo.InvariantCulture);
+            lock (this.ramCounterLock)
+            {
+                return this.RamCounter?.NextValue().ToString(CultureInfo.InvariantCulture);
+            }
         }
 
         public string GetCpuLoad()
         {
-            return this.CpuCounter.NextValue().ToString(CultureInfo.InvariantCulture);
+            lock (this.cpuCounterLock)
+            {
+                return this.CpuCounter.NextValue().ToString(CultureInfo.InvariantCulture);
+            }
         }
 
         public void BringToFront()
@@ -161,10 +186,12 @@ namespace WorkerManager
                 }
             }
 
+            this.controllerPort = (int)this.settings["controller_port"];
+
             //prepare startup.ms file for this worker
             var workgroupValue = (string)this.settings["workgroup"];
             var startupScriptFilename = Path.Combine(Path.GetTempPath(), $"worker_{this.Port}.ms");
-            File.WriteAllText(startupScriptFilename, $"threejsApiStart {this.Port} \"{this.controllerHost}\" \"{workgroupValue}\"");
+            File.WriteAllText(startupScriptFilename, $"threejsApiStart {this.Port} \"{this.controllerHost}\" {this.controllerPort} \"{workgroupValue}\"");
 
             //start worker process with parameters
             //learn more about command line parameters here: 
