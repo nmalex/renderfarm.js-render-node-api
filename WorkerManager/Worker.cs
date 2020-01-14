@@ -47,7 +47,20 @@ namespace WorkerManager
 
         private string Ip { get; }
 
-        public int? Pid => this.Process?.Id;
+        public int? Pid
+        {
+            get
+            {
+                try
+                {
+                    return this.Process?.Id;
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+        }
 
         public int Port { get; }
 
