@@ -190,7 +190,7 @@ namespace WorkerManager
 
         private string GetWorkerProgressJsonStr()
         {
-            var jsons = this.workersManager.Workers.Select(i => $"{{ \"pid\": {i.Pid ?? 0}, \"port\": {i.Port}, \"progress\": \"{i.VrayProgress}\" }}").ToArray();
+            var jsons = this.workersManager.Workers.Select(i => $"{{ \"pid\": {i.Pid ?? 0}, \"port\": {i.Port}, \"vray_progress\": \"{i.VrayProgress}\" }}").ToArray();
             return "[ " + (string.Join(", ", jsons)) + " ]";
         }
 
