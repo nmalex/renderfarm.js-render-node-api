@@ -157,7 +157,9 @@ namespace WorkerManager
         {
             var networkInterface = NetworkInterface.GetAllNetworkInterfaces()
                 .FirstOrDefault(n => n.OperationalStatus == OperationalStatus.Up
-                            && n.NetworkInterfaceType != NetworkInterfaceType.Loopback
+                            && (n.NetworkInterfaceType == NetworkInterfaceType.Ethernet 
+                                || n.NetworkInterfaceType == NetworkInterfaceType.GigabitEthernet 
+                                || n.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
                             && n.GetIPProperties().UnicastAddresses.Any(a => a.Address.AddressFamily == AddressFamily.InterNetwork));
 
             this.localIp = networkInterface?.GetIPProperties()?.UnicastAddresses?.FirstOrDefault()?.Address;
