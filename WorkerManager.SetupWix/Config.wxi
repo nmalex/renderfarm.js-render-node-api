@@ -2,6 +2,6 @@
 <Include>
   <?define Manufacturer = "Rayys LLC" ?>
   <?define ProductName = "renderfarm.js - Worker Manager" ?>
-  <?define ProductVersion = "1.0.0" ?>
+  <?define ProductVersion = "1.0.3" ?>
   <?define ProductUpgradeCode = "bd215fe3-d082-4dab-8b23-fbd326cbdce2" ?>
 </Include>

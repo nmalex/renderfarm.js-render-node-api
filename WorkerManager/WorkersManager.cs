@@ -110,6 +110,7 @@ namespace WorkerManager
         {
             Worker worker;
 
+            var workerExternalIp = (string)this.settings["worker_external_ip"];
             var workerPortRangeFrom = (long)this.settings["worker_port_range_from"];
             var wokerPortRangeWidth = (long)this.settings["worker_port_range_width"];
 
@@ -118,8 +119,8 @@ namespace WorkerManager
                 do
                 {
                     var randomPort = (int)Math.Floor(workerPortRangeFrom + wokerPortRangeWidth * Rnd.NextDouble());
-                    var ip = GetLocalIp();
-                    worker = new Worker(ip, randomPort, this.settings);
+                    var localIp = GetLocalIp();
+                    worker = new Worker(localIp, workerExternalIp, randomPort, this.settings);
                 } while (this.workers.ContainsKey(worker.Port));
             }
 

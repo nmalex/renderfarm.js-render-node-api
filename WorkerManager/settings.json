@@ -20,6 +20,7 @@
   "vrayspawner_exe": "WorkerManager.3dsmax.exe",
 
   "worker_count": 0,
+  "worker_external_ip": "",
   "worker_port_range_from": 50000,
   "worker_port_range_width": 1000
 }

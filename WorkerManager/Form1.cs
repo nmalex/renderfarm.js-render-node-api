@@ -127,6 +127,13 @@ namespace WorkerManager
             this.heartbeatTimer = new System.Threading.Timer(SendHeartbeat, null, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(1));
             NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
 
+            var assembly = Assembly.GetExecutingAssembly();
+            var fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+            var versionStr = "ver." + fvi.FileVersion;
+            var externalIpStr = (string)this.settings["worker_external_ip"];
+            externalIpStr = string.IsNullOrWhiteSpace(externalIpStr) ? externalIpStr : (" - IP " + externalIpStr);
+            this.Text = string.Format("RFarm Worker Manager - {0}{1}", versionStr, externalIpStr);
+
             this.ShowWindow();
         }
 

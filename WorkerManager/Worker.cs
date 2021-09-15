@@ -36,16 +36,18 @@ namespace WorkerManager
         public event EventHandler Restarted;
         public event EventHandler<string> ProgressChanged;
 
-        public Worker(string ip, int port, Settings settings)
+        public Worker(string localIp, string externalIp, int port, Settings settings)
         {
-            this.Ip = ip;
+            this.LocalIp = localIp;
+            this.ExternalIp = externalIp;
             this.Port = port;
             this.settings = settings;
         }
 
         #region Properties
 
-        private string Ip { get; }
+        private string LocalIp { get; }
+        private string ExternalIp { get; }
 
         public int? Pid
         {
@@ -83,7 +85,7 @@ namespace WorkerManager
             }
         }
 
-        public string Label => $"{this.Ip}:{this.Port} ({this.restartCount}) {(this.renderingProgressSniffer != null ? this.renderingProgressSniffer.ProgressText : "")}";
+        public string Label => $"{this.ExternalIp}:{this.Port} ({this.restartCount}) {(this.renderingProgressSniffer != null ? this.renderingProgressSniffer.ProgressText : "")}";
 
         private Process Process { get; set; }
 
@@ -204,7 +206,7 @@ namespace WorkerManager
             //prepare startup.ms file for this worker
             var workgroupValue = (string)this.settings["workgroup"];
             var startupScriptFilename = Path.Combine(Path.GetTempPath(), $"worker_{this.Port}.ms");
-            File.WriteAllText(startupScriptFilename, $"threejsApiStart {this.Port} \"{this.controllerHost}\" {this.controllerPort} \"{workgroupValue}\"");
+            File.WriteAllText(startupScriptFilename, $"threejsApiStart \"{this.ExternalIp}\" {this.Port} \"{this.controllerHost}\" {this.controllerPort} \"{workgroupValue}\"");
 
             //start worker process with parameters
             //learn more about command line parameters here: 
