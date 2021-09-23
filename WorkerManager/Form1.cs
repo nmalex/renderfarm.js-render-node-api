@@ -191,8 +191,8 @@ namespace WorkerManager
 
             var runningVraySpawner = this.spawnerProcess != null && !this.spawnerProcess.HasExited;
             var cpuUsage = this.totalCpuCounter.NextValue().ToString("0.000", CultureInfo.InvariantCulture);
-            var externalIp = (long)this.settings["worker_external_ip"];
-            var message = $"{{\"id\":{++HeartbeatI}, \"type\":\"heartbeat\", \"sender\":\"worker-manager\", \"version\":\"{this.currentVersion}\", \"ip\":\"{externalIp}\", \"mac\":\"{this.localMac}\", \"vray_spawner\":{runningVraySpawner.ToString().ToLower()}, \"worker_count\":{this.workersManager.Count}, \"worker_progress\":{this.GetWorkerProgressJsonStr()}, \"cpu_usage\":{cpuUsage}, \"ram_usage\":{usedRam.ToString("0.000", CultureInfo.InvariantCulture)}, \"total_ram\":{totalRam.ToString("0.000", CultureInfo.InvariantCulture)}}}";
+            var externalIp = (string)this.settings["worker_external_ip"];
+            var message = $"{{\"id\":{++HeartbeatI}, \"type\":\"heartbeat\", \"sender\":\"worker-manager\", \"version\":\"{this.currentVersion}\", \"external_ip\":\"{externalIp}\", \"mac\":\"{this.localMac}\", \"vray_spawner\":{runningVraySpawner.ToString().ToLower()}, \"worker_count\":{this.workersManager.Count}, \"worker_progress\":{this.GetWorkerProgressJsonStr()}, \"cpu_usage\":{cpuUsage}, \"ram_usage\":{usedRam.ToString("0.000", CultureInfo.InvariantCulture)}, \"total_ram\":{totalRam.ToString("0.000", CultureInfo.InvariantCulture)}}}";
             var sendBuffer = Encoding.ASCII.GetBytes(message);
             this.heartbeatSocket.SendTo(sendBuffer, this.heartbeatEndpoint);
         }
