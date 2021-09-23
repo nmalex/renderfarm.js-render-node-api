@@ -259,9 +259,11 @@ namespace WorkerManager
 
         private void OnWorkerDeleted(object sender, IWorker workerDeleted)
         {
-            var deletedListItem = this.listItemsMap[workerDeleted];
-            this.listView1.Items.Remove(deletedListItem);
-
+            ListViewItem listItem;
+            if (this.listItemsMap.TryGetValue(workerDeleted, out listItem))
+            {
+                this.listView1.Items.Remove(listItem);
+            }
             this.UpdateWorkerCount();
         }
 
