@@ -340,16 +340,25 @@ namespace WorkerManager
 
         private void OnWorkerStopped(object sender, EventArgs eventArgs)
         {
-            this.renderingProgressSniffer.ProgressChanged -= OnRenderProgressChanged;
-            this.renderingProgressSniffer?.Dispose();
-            this.renderingProgressSniffer = null;
+            if (this.renderingProgressSniffer != null)
+            {
+                this.renderingProgressSniffer.ProgressChanged -= OnRenderProgressChanged;
+                this.renderingProgressSniffer.Dispose();
+                this.renderingProgressSniffer = null;
+            }
 
-            this.timerProcessCheck?.Dispose();
-            this.timerProcessCheck = null;
+            if (this.timerProcessCheck != null)
+            {
+                this.timerProcessCheck.Dispose();
+                this.timerProcessCheck = null;
+            }
 
             var process = (Process)sender;
-            process.Exited -= OnWorkerStopped;
-            process.Dispose();
+            if (process != null)
+            {
+                process.Exited -= OnWorkerStopped;
+                process.Dispose();
+            }
 
             this.Restart();
         }
